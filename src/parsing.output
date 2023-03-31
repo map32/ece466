@@ -1,0 +1,2065 @@
+Nonterminals useless in grammar
+
+    program
+
+
+Terminals unused in grammar
+
+    EQ
+    NE
+    UPLUS
+    UMINUS
+    DEREF
+    ADDR
+    CAST
+    AUTO
+    BREAK
+    CASE
+    CHAR
+    CONST
+    CONTINUE
+    DEFAULT
+    DO
+    DOUBLE
+    ELSE
+    ENUM
+    EXTERN
+    FLOAT
+    FOR
+    GOTO
+    IF
+    INT
+    LONG
+    REGISTER
+    RETURN
+    SHORT
+    SIGNED
+    STATIC
+    STRUCT
+    SWITCH
+    TYPEDEF
+    UNION
+    UNSIGNED
+    VOID
+    VOLATILE
+    WHILE
+    BOOL
+    COMPLEX
+    IMAGINARY
+    TYPENAME
+    BOGUS
+    INLINE
+    RESTRICT
+    ELLIPSIS
+    '{'
+    '}'
+
+
+Grammar
+
+    0 $accept: pexp $end
+
+    1 pexp: ID
+    2     | constant
+    3     | STR
+    4     | '(' exp ')'
+
+    5 number: NUM
+    6       | NUMF
+
+    7 constant: number
+    8         | CH
+
+    9 postexp: pexp
+   10        | pexp '[' exp ']'
+   11        | pexp '(' ')'
+   12        | pexp '(' exp ')'
+   13        | pexp '.' ID
+   14        | pexp ARROW ID
+   15        | pexp INC
+   16        | pexp DEC
+
+   17 unary: postexp
+   18      | INC unary
+   19      | DEC unary
+   20      | uop castexp
+   21      | SIZEOF unary
+
+   22 uop: '&'
+   23    | '*'
+   24    | '+'
+   25    | '-'
+   26    | '~'
+   27    | '!'
+
+   28 castexp: unary
+
+   29 binary: castexp
+   30       | binary '*' binary
+   31       | binary '/' binary
+   32       | binary '%' binary
+   33       | binary '+' binary
+   34       | binary '-' binary
+   35       | binary LSHIFT binary
+   36       | binary RSHIFT binary
+   37       | binary '<' binary
+   38       | binary '>' binary
+   39       | binary LE binary
+   40       | binary GE binary
+   41       | binary '&' binary
+   42       | binary '^' binary
+   43       | binary '|' binary
+   44       | binary AND binary
+   45       | binary OR binary
+
+   46 ternary: binary
+   47        | binary '?' exp ':' ternary
+
+   48 aop: '='
+   49    | PLUSEQ
+   50    | MINUSEQ
+   51    | TIMESEQ
+   52    | DIVEQ
+   53    | MODEQ
+   54    | LSHIFTEQ
+   55    | RSHIFTEQ
+   56    | ANDEQ
+   57    | XOREQ
+   58    | OREQ
+
+   59 exp: aexp
+   60    | exp ',' aexp
+
+   61 aexp: ternary
+   62     | unary aop aexp
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0
+    '!' (33) 27
+    '%' (37) 32
+    '&' (38) 22 41
+    '(' (40) 4 11 12
+    ')' (41) 4 11 12
+    '*' (42) 23 30
+    '+' (43) 24 33
+    ',' (44) 60
+    '-' (45) 25 34
+    '.' (46) 13
+    '/' (47) 31
+    ':' (58) 47
+    '<' (60) 37
+    '=' (61) 48
+    '>' (62) 38
+    '?' (63) 47
+    '[' (91) 10
+    ']' (93) 10
+    '^' (94) 42
+    '{' (123)
+    '|' (124) 43
+    '}' (125)
+    '~' (126) 26
+    error (256)
+    PLUSEQ (258) 49
+    MINUSEQ (259) 50
+    TIMESEQ (260) 51
+    DIVEQ (261) 52
+    MODEQ (262) 53
+    ANDEQ (263) 56
+    XOREQ (264) 57
+    OREQ (265) 58
+    LSHIFTEQ (266) 54
+    RSHIFTEQ (267) 55
+    OR (268) 45
+    AND (269) 44
+    EQ (270)
+    NE (271)
+    LE (272) 39
+    GE (273) 40
+    LSHIFT (274) 35
+    RSHIFT (275) 36
+    PREINC (276)
+    PREDEC (277)
+    UPLUS (278)
+    UMINUS (279)
+    DEREF (280)
+    ADDR (281)
+    SIZEOF (282) 21
+    POSTINC (283)
+    POSTDEC (284)
+    CAST <astnode> (285)
+    ARROW (286) 14
+    AUTO (287)
+    BREAK (288)
+    CASE (289)
+    CHAR (290)
+    CONST (291)
+    CONTINUE (292)
+    DEFAULT (293)
+    DO (294)
+    DOUBLE (295)
+    ELSE (296)
+    ENUM (297)
+    EXTERN (298)
+    FLOAT (299)
+    FOR (300)
+    GOTO (301)
+    IF (302)
+    INT (303)
+    LONG (304)
+    REGISTER (305)
+    RETURN (306)
+    SHORT (307)
+    SIGNED (308)
+    STATIC (309)
+    STRUCT (310)
+    SWITCH (311)
+    TYPEDEF (312)
+    UNION (313)
+    UNSIGNED (314)
+    VOID (315)
+    VOLATILE (316)
+    WHILE (317)
+    BOOL (318)
+    COMPLEX (319)
+    IMAGINARY (320)
+    INC (321) 15 18
+    DEC (322) 16 19
+    TYPENAME <s> (323)
+    BOGUS (324)
+    NUM <i> (325) 5
+    NUMF <d> (326) 6
+    CH <s> (327) 8
+    STR <s> (328) 3
+    ID <s> (329) 1 13 14
+    INLINE (330)
+    RESTRICT (331)
+    ELLIPSIS (332)
+
+
+Nonterminals, with rules where they appear
+
+    $accept (101)
+        on left: 0
+    pexp <astnode> (102)
+        on left: 1 2 3 4
+        on right: 0 9 10 11 12 13 14 15 16
+    number <astnode> (103)
+        on left: 5 6
+        on right: 7
+    constant <astnode> (104)
+        on left: 7 8
+        on right: 2
+    postexp <astnode> (105)
+        on left: 9 10 11 12 13 14 15 16
+        on right: 17
+    unary <astnode> (106)
+        on left: 17 18 19 20 21
+        on right: 18 19 21 28 62
+    uop <i> (107)
+        on left: 22 23 24 25 26 27
+        on right: 20
+    castexp <astnode> (108)
+        on left: 28
+        on right: 20 29
+    binary <astnode> (109)
+        on left: 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45
+        on right: 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47
+    ternary <astnode> (110)
+        on left: 46 47
+        on right: 47 61
+    aop <i> (111)
+        on left: 48 49 50 51 52 53 54 55 56 57 58
+        on right: 62
+    exp <astnode> (112)
+        on left: 59 60
+        on right: 4 10 12 47 60
+    aexp <astnode> (113)
+        on left: 61 62
+        on right: 59 60 62
+
+
+State 0
+
+    0 $accept: • pexp $end
+
+    '('   shift, and go to state 1
+    NUM   shift, and go to state 2
+    NUMF  shift, and go to state 3
+    CH    shift, and go to state 4
+    STR   shift, and go to state 5
+    ID    shift, and go to state 6
+
+    pexp      go to state 7
+    number    go to state 8
+    constant  go to state 9
+
+
+State 1
+
+    4 pexp: '(' • exp ')'
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 21
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 25
+    exp       go to state 26
+    aexp      go to state 27
+
+
+State 2
+
+    5 number: NUM •
+
+    $default  reduce using rule 5 (number)
+
+
+State 3
+
+    6 number: NUMF •
+
+    $default  reduce using rule 6 (number)
+
+
+State 4
+
+    8 constant: CH •
+
+    $default  reduce using rule 8 (constant)
+
+
+State 5
+
+    3 pexp: STR •
+
+    $default  reduce using rule 3 (pexp)
+
+
+State 6
+
+    1 pexp: ID •
+
+    $default  reduce using rule 1 (pexp)
+
+
+State 7
+
+    0 $accept: pexp • $end
+
+    $end  shift, and go to state 28
+
+
+State 8
+
+    7 constant: number •
+
+    $default  reduce using rule 7 (constant)
+
+
+State 9
+
+    2 pexp: constant •
+
+    $default  reduce using rule 2 (pexp)
+
+
+State 10
+
+   22 uop: '&' •
+
+    $default  reduce using rule 22 (uop)
+
+
+State 11
+
+   24 uop: '+' •
+
+    $default  reduce using rule 24 (uop)
+
+
+State 12
+
+   25 uop: '-' •
+
+    $default  reduce using rule 25 (uop)
+
+
+State 13
+
+   23 uop: '*' •
+
+    $default  reduce using rule 23 (uop)
+
+
+State 14
+
+   27 uop: '!' •
+
+    $default  reduce using rule 27 (uop)
+
+
+State 15
+
+   26 uop: '~' •
+
+    $default  reduce using rule 26 (uop)
+
+
+State 16
+
+   21 unary: SIZEOF • unary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 29
+    uop       go to state 22
+
+
+State 17
+
+   18 unary: INC • unary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 30
+    uop       go to state 22
+
+
+State 18
+
+   19 unary: DEC • unary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 31
+    uop       go to state 22
+
+
+State 19
+
+    9 postexp: pexp •
+   10        | pexp • '[' exp ']'
+   11        | pexp • '(' ')'
+   12        | pexp • '(' exp ')'
+   13        | pexp • '.' ID
+   14        | pexp • ARROW ID
+   15        | pexp • INC
+   16        | pexp • DEC
+
+    '('    shift, and go to state 32
+    '['    shift, and go to state 33
+    '.'    shift, and go to state 34
+    ARROW  shift, and go to state 35
+    INC    shift, and go to state 36
+    DEC    shift, and go to state 37
+
+    $default  reduce using rule 9 (postexp)
+
+
+State 20
+
+   17 unary: postexp •
+
+    $default  reduce using rule 17 (unary)
+
+
+State 21
+
+   28 castexp: unary •
+   62 aexp: unary • aop aexp
+
+    '='       shift, and go to state 38
+    PLUSEQ    shift, and go to state 39
+    MINUSEQ   shift, and go to state 40
+    TIMESEQ   shift, and go to state 41
+    DIVEQ     shift, and go to state 42
+    MODEQ     shift, and go to state 43
+    ANDEQ     shift, and go to state 44
+    XOREQ     shift, and go to state 45
+    OREQ      shift, and go to state 46
+    LSHIFTEQ  shift, and go to state 47
+    RSHIFTEQ  shift, and go to state 48
+
+    $default  reduce using rule 28 (castexp)
+
+    aop  go to state 49
+
+
+State 22
+
+   20 unary: uop • castexp
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 51
+
+
+State 23
+
+   29 binary: castexp •
+
+    $default  reduce using rule 29 (binary)
+
+
+State 24
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+   46 ternary: binary •
+   47        | binary • '?' exp ':' ternary
+
+    '?'     shift, and go to state 52
+    OR      shift, and go to state 53
+    AND     shift, and go to state 54
+    '|'     shift, and go to state 55
+    '^'     shift, and go to state 56
+    '&'     shift, and go to state 57
+    '>'     shift, and go to state 58
+    '<'     shift, and go to state 59
+    LE      shift, and go to state 60
+    GE      shift, and go to state 61
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 46 (ternary)
+
+
+State 25
+
+   61 aexp: ternary •
+
+    $default  reduce using rule 61 (aexp)
+
+
+State 26
+
+    4 pexp: '(' exp • ')'
+   60 exp: exp • ',' aexp
+
+    ','  shift, and go to state 69
+    ')'  shift, and go to state 70
+
+
+State 27
+
+   59 exp: aexp •
+
+    $default  reduce using rule 59 (exp)
+
+
+State 28
+
+    0 $accept: pexp $end •
+
+    $default  accept
+
+
+State 29
+
+   21 unary: SIZEOF unary •
+
+    $default  reduce using rule 21 (unary)
+
+
+State 30
+
+   18 unary: INC unary •
+
+    $default  reduce using rule 18 (unary)
+
+
+State 31
+
+   19 unary: DEC unary •
+
+    $default  reduce using rule 19 (unary)
+
+
+State 32
+
+   11 postexp: pexp '(' • ')'
+   12        | pexp '(' • exp ')'
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    ')'     shift, and go to state 71
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 21
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 25
+    exp       go to state 72
+    aexp      go to state 27
+
+
+State 33
+
+   10 postexp: pexp '[' • exp ']'
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 21
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 25
+    exp       go to state 73
+    aexp      go to state 27
+
+
+State 34
+
+   13 postexp: pexp '.' • ID
+
+    ID  shift, and go to state 74
+
+
+State 35
+
+   14 postexp: pexp ARROW • ID
+
+    ID  shift, and go to state 75
+
+
+State 36
+
+   15 postexp: pexp INC •
+
+    $default  reduce using rule 15 (postexp)
+
+
+State 37
+
+   16 postexp: pexp DEC •
+
+    $default  reduce using rule 16 (postexp)
+
+
+State 38
+
+   48 aop: '=' •
+
+    $default  reduce using rule 48 (aop)
+
+
+State 39
+
+   49 aop: PLUSEQ •
+
+    $default  reduce using rule 49 (aop)
+
+
+State 40
+
+   50 aop: MINUSEQ •
+
+    $default  reduce using rule 50 (aop)
+
+
+State 41
+
+   51 aop: TIMESEQ •
+
+    $default  reduce using rule 51 (aop)
+
+
+State 42
+
+   52 aop: DIVEQ •
+
+    $default  reduce using rule 52 (aop)
+
+
+State 43
+
+   53 aop: MODEQ •
+
+    $default  reduce using rule 53 (aop)
+
+
+State 44
+
+   56 aop: ANDEQ •
+
+    $default  reduce using rule 56 (aop)
+
+
+State 45
+
+   57 aop: XOREQ •
+
+    $default  reduce using rule 57 (aop)
+
+
+State 46
+
+   58 aop: OREQ •
+
+    $default  reduce using rule 58 (aop)
+
+
+State 47
+
+   54 aop: LSHIFTEQ •
+
+    $default  reduce using rule 54 (aop)
+
+
+State 48
+
+   55 aop: RSHIFTEQ •
+
+    $default  reduce using rule 55 (aop)
+
+
+State 49
+
+   62 aexp: unary aop • aexp
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 21
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 25
+    aexp      go to state 76
+
+
+State 50
+
+   28 castexp: unary •
+
+    $default  reduce using rule 28 (castexp)
+
+
+State 51
+
+   20 unary: uop castexp •
+
+    $default  reduce using rule 20 (unary)
+
+
+State 52
+
+   47 ternary: binary '?' • exp ':' ternary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 21
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 25
+    exp       go to state 77
+    aexp      go to state 27
+
+
+State 53
+
+   45 binary: binary OR • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 78
+
+
+State 54
+
+   44 binary: binary AND • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 79
+
+
+State 55
+
+   43 binary: binary '|' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 80
+
+
+State 56
+
+   42 binary: binary '^' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 81
+
+
+State 57
+
+   41 binary: binary '&' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 82
+
+
+State 58
+
+   38 binary: binary '>' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 83
+
+
+State 59
+
+   37 binary: binary '<' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 84
+
+
+State 60
+
+   39 binary: binary LE • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 85
+
+
+State 61
+
+   40 binary: binary GE • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 86
+
+
+State 62
+
+   35 binary: binary LSHIFT • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 87
+
+
+State 63
+
+   36 binary: binary RSHIFT • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 88
+
+
+State 64
+
+   33 binary: binary '+' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 89
+
+
+State 65
+
+   34 binary: binary '-' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 90
+
+
+State 66
+
+   30 binary: binary '*' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 91
+
+
+State 67
+
+   31 binary: binary '/' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 92
+
+
+State 68
+
+   32 binary: binary '%' • binary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 93
+
+
+State 69
+
+   60 exp: exp ',' • aexp
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 21
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 25
+    aexp      go to state 94
+
+
+State 70
+
+    4 pexp: '(' exp ')' •
+
+    $default  reduce using rule 4 (pexp)
+
+
+State 71
+
+   11 postexp: pexp '(' ')' •
+
+    $default  reduce using rule 11 (postexp)
+
+
+State 72
+
+   12 postexp: pexp '(' exp • ')'
+   60 exp: exp • ',' aexp
+
+    ','  shift, and go to state 69
+    ')'  shift, and go to state 95
+
+
+State 73
+
+   10 postexp: pexp '[' exp • ']'
+   60 exp: exp • ',' aexp
+
+    ','  shift, and go to state 69
+    ']'  shift, and go to state 96
+
+
+State 74
+
+   13 postexp: pexp '.' ID •
+
+    $default  reduce using rule 13 (postexp)
+
+
+State 75
+
+   14 postexp: pexp ARROW ID •
+
+    $default  reduce using rule 14 (postexp)
+
+
+State 76
+
+   62 aexp: unary aop aexp •
+
+    $default  reduce using rule 62 (aexp)
+
+
+State 77
+
+   47 ternary: binary '?' exp • ':' ternary
+   60 exp: exp • ',' aexp
+
+    ','  shift, and go to state 69
+    ':'  shift, and go to state 97
+
+
+State 78
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+   45       | binary OR binary •
+
+    AND     shift, and go to state 54
+    '|'     shift, and go to state 55
+    '^'     shift, and go to state 56
+    '&'     shift, and go to state 57
+    '>'     shift, and go to state 58
+    '<'     shift, and go to state 59
+    LE      shift, and go to state 60
+    GE      shift, and go to state 61
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 45 (binary)
+
+
+State 79
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   44       | binary AND binary •
+   45       | binary • OR binary
+
+    '|'     shift, and go to state 55
+    '^'     shift, and go to state 56
+    '&'     shift, and go to state 57
+    '>'     shift, and go to state 58
+    '<'     shift, and go to state 59
+    LE      shift, and go to state 60
+    GE      shift, and go to state 61
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 44 (binary)
+
+
+State 80
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   43       | binary '|' binary •
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '^'     shift, and go to state 56
+    '&'     shift, and go to state 57
+    '>'     shift, and go to state 58
+    '<'     shift, and go to state 59
+    LE      shift, and go to state 60
+    GE      shift, and go to state 61
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 43 (binary)
+
+
+State 81
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   42       | binary '^' binary •
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '&'     shift, and go to state 57
+    '>'     shift, and go to state 58
+    '<'     shift, and go to state 59
+    LE      shift, and go to state 60
+    GE      shift, and go to state 61
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 42 (binary)
+
+
+State 82
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   41       | binary '&' binary •
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '>'     shift, and go to state 58
+    '<'     shift, and go to state 59
+    LE      shift, and go to state 60
+    GE      shift, and go to state 61
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 41 (binary)
+
+
+State 83
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   38       | binary '>' binary •
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 38 (binary)
+
+
+State 84
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   37       | binary '<' binary •
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 37 (binary)
+
+
+State 85
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   39       | binary LE binary •
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 39 (binary)
+
+
+State 86
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   40       | binary GE binary •
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    LSHIFT  shift, and go to state 62
+    RSHIFT  shift, and go to state 63
+    '+'     shift, and go to state 64
+    '-'     shift, and go to state 65
+    '*'     shift, and go to state 66
+    '/'     shift, and go to state 67
+    '%'     shift, and go to state 68
+
+    $default  reduce using rule 40 (binary)
+
+
+State 87
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   35       | binary LSHIFT binary •
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '+'  shift, and go to state 64
+    '-'  shift, and go to state 65
+    '*'  shift, and go to state 66
+    '/'  shift, and go to state 67
+    '%'  shift, and go to state 68
+
+    $default  reduce using rule 35 (binary)
+
+
+State 88
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   36       | binary RSHIFT binary •
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '+'  shift, and go to state 64
+    '-'  shift, and go to state 65
+    '*'  shift, and go to state 66
+    '/'  shift, and go to state 67
+    '%'  shift, and go to state 68
+
+    $default  reduce using rule 36 (binary)
+
+
+State 89
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   33       | binary '+' binary •
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '*'  shift, and go to state 66
+    '/'  shift, and go to state 67
+    '%'  shift, and go to state 68
+
+    $default  reduce using rule 33 (binary)
+
+
+State 90
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   34       | binary '-' binary •
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    '*'  shift, and go to state 66
+    '/'  shift, and go to state 67
+    '%'  shift, and go to state 68
+
+    $default  reduce using rule 34 (binary)
+
+
+State 91
+
+   30 binary: binary • '*' binary
+   30       | binary '*' binary •
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    $default  reduce using rule 30 (binary)
+
+
+State 92
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   31       | binary '/' binary •
+   32       | binary • '%' binary
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    $default  reduce using rule 31 (binary)
+
+
+State 93
+
+   30 binary: binary • '*' binary
+   31       | binary • '/' binary
+   32       | binary • '%' binary
+   32       | binary '%' binary •
+   33       | binary • '+' binary
+   34       | binary • '-' binary
+   35       | binary • LSHIFT binary
+   36       | binary • RSHIFT binary
+   37       | binary • '<' binary
+   38       | binary • '>' binary
+   39       | binary • LE binary
+   40       | binary • GE binary
+   41       | binary • '&' binary
+   42       | binary • '^' binary
+   43       | binary • '|' binary
+   44       | binary • AND binary
+   45       | binary • OR binary
+
+    $default  reduce using rule 32 (binary)
+
+
+State 94
+
+   60 exp: exp ',' aexp •
+
+    $default  reduce using rule 60 (exp)
+
+
+State 95
+
+   12 postexp: pexp '(' exp ')' •
+
+    $default  reduce using rule 12 (postexp)
+
+
+State 96
+
+   10 postexp: pexp '[' exp ']' •
+
+    $default  reduce using rule 10 (postexp)
+
+
+State 97
+
+   47 ternary: binary '?' exp ':' • ternary
+
+    '&'     shift, and go to state 10
+    '+'     shift, and go to state 11
+    '-'     shift, and go to state 12
+    '*'     shift, and go to state 13
+    '!'     shift, and go to state 14
+    '~'     shift, and go to state 15
+    SIZEOF  shift, and go to state 16
+    '('     shift, and go to state 1
+    INC     shift, and go to state 17
+    DEC     shift, and go to state 18
+    NUM     shift, and go to state 2
+    NUMF    shift, and go to state 3
+    CH      shift, and go to state 4
+    STR     shift, and go to state 5
+    ID      shift, and go to state 6
+
+    pexp      go to state 19
+    number    go to state 8
+    constant  go to state 9
+    postexp   go to state 20
+    unary     go to state 50
+    uop       go to state 22
+    castexp   go to state 23
+    binary    go to state 24
+    ternary   go to state 98
+
+
+State 98
+
+   47 ternary: binary '?' exp ':' ternary •
+
+    $default  reduce using rule 47 (ternary)
