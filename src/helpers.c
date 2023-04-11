@@ -2,6 +2,14 @@
 #include "parsing.tab.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
+ERROR* getError(int lineno, char* text) {
+    ERROR* e = (ERROR*) malloc(sizeof(ERROR));
+    e->lineno=lineno;
+    e->text=text;
+    return e;
+}
 
 char* gettoken(int t) {
     char a[] = " ";
@@ -262,11 +270,13 @@ void printtokens(int t,char* filename, int yylineno, YYSTYPE value){
                     printchar((value.s.c)[k]);
                 }
                 printf("\n");
-            } else if (t==NUM) {
-                printf("%lld\n",value.i);
+            } else if (t==NUM && value.n.type == 1) {
+                printf("%lld\n",value.n.i);
 
-            } else if (t==NUMF){
-                printf("%Lf\n",(value.d));
+            }  else if (t==NUM && value.n.type == 0) {
+                printf("%llu\n",value.n.u);
+            }   else if (t==NUMF){
+                printf("%Lf\n",(value.n.f));
             } else
                 printf("\n");
 }

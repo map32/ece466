@@ -1,19 +1,40 @@
-int i1;
-unsigned int ui1;
-unsigned ui2;
-long unsigned ul1;
-const i2;
-signed i3;
-volatile unsigned ui3;
-char c1;
-unsigned char c2;
-signed char c3;
-long long ll1;
-unsigned long long ull1;
-short s1;
-unsigned short us1;
-volatile signed short s3;
-double d;
-long double ld;
-float f;
-const float f2;
+
+static struct str1 {
+	int a;
+	/*const*/ int i;	/*What happens when you uncomment this?*/
+	struct str2 {
+		short d,e;
+		char c;
+	} str2;
+	char c;
+} s1;
+
+struct str2 s2;
+
+struct str3 {
+	struct str4 *p4;
+} s3;
+
+struct str4 {
+	struct str3 *p3;
+	struct str1 str1[10];
+	int i;
+} s4;
+
+struct {
+	int y;
+} s5;
+
+
+struct str6 {
+	int a;
+	unsigned b:2;
+	unsigned c:5;
+	int :7;
+	unsigned d;
+	unsigned e:16;
+} s6;
+union u1 {
+	struct str4 str4;
+	struct str3 str3;
+} u1;

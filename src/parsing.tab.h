@@ -137,18 +137,24 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 13 "parsing.y"
+#line 18 "parsing.y"
 
   struct astnode *astnode;
-  struct astnode_stmts *astnode_stmt;
   struct s {
     unsigned int l;
     unsigned char* c;
 } s;
-  unsigned long long int i;
-  long double d;
+  struct n {
+	int type;
+	union {
+		unsigned long long int u;
+		long long int i;
+		long double f;
+	};
+  } n;
+  long long int i;
 
-#line 152 "parsing.tab.h"
+#line 158 "parsing.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "ast.h": "c",
-        "OP.C": "cpp"
+        "OP.C": "cpp",
+        "test2": "c"
     }
 }

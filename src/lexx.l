@@ -15,12 +15,15 @@ digit [0-9]
 nonzero [1-9]
 octal [0-7]
 hex [0-9a-fA-F]
-intsuffix ([uU][lL]?)|([uU](ll|LL)?)|([lL][uU]?)|((ll|LL)[uU]?)
+intsuffix ([uU][lL]?)|([uU](ll|LL)?)|([lL][uU])|((ll|LL)[uU])
+signedsuffix ([lL][lL]?)
 exp ([eE][+-]?[0-9]+)
 bexp ([Pp][+-]?[0-9]+)
 floatsuffix [flFL]
 %x SINGLEQ
 %x DOUBLEQ
+%x C_COMMENT
+%x C_COMMENT_SINGLE
 %%
 [ \t] ;
 (\n|\r|\r\n) { yylineno = yylineno + 1;}
@@ -61,13 +64,16 @@ floatsuffix [flFL]
 "_Bool" return BOOL;
 "_Complex" return COMPLEX;
 "_Imaginary" return IMAGINARY;
-({nonzero}{digit}*{intsuffix}?)|(0{intsuffix}?) {yylval.i = strtoull(yytext,NULL,10); return NUM;}
-0{octal}+{intsuffix}? {yylval.i = strtoull(yytext,NULL,8); return NUM;}
-0(x|X){hex}+{intsuffix}? {yylval.i = strtoull(yytext,NULL,16); return NUM;}
+({nonzero}{digit}*{intsuffix}?)|(0{intsuffix}?) {yylval.n.type=0; yylval.n.u = strtoull(yytext,NULL,10); return NUM;}
+({nonzero}{digit}*{signedsuffix}?)|(0{signedsuffix}?) {yylval.n.type=1; yylval.n.i = strtoll(yytext,NULL,10); return NUM;}
+0{octal}+{intsuffix}? {yylval.n.type=0; yylval.n.u = strtoull(yytext,NULL,8); return NUM;}
+0{octal}+{signedsuffix}? {yylval.n.type=1; yylval.n.i = strtoll(yytext,NULL,8); return NUM;}
+0(x|X){hex}+{intsuffix}? {yylval.n.type=0; yylval.n.u = strtoull(yytext,NULL,16); return NUM;}
+0(x|X){hex}+{signedsuffix}? {yylval.n.type=1; yylval.n.i = strtoll(yytext,NULL,16); return NUM;}
 ((({digit}*\.{digit}+)|({digit}+\.)){exp}?{floatsuffix}?)|({digit}+{exp}{floatsuffix}?) {
-    yylval.d = strtold(yytext,NULL); return NUMF;}
+    yylval.n.type=2; yylval.n.f = strtold(yytext,NULL); return NUMF;}
 0(x|X)(((({hex}*\.{hex}+)|({hex}+\.)){bexp}?{floatsuffix}?)|({hex}+{bexp}{floatsuffix}?)) {
-    sscanf(yytext,"%LA",&(yylval.d)); return NUMF;}
+    yylval.n.type=2; sscanf(yytext,"%LA",&(yylval.n.f)); return NUMF;}
 L?'' fprintf(stderr,"error: line %d: char is empty",yylineno);
 L?' {
     BEGIN(SINGLEQ);
@@ -234,8 +240,13 @@ L?\" {BEGIN(DOUBLEQ);
 ";" return ';';
 ":" return ':';
 "\.\.\." return ELLIPSIS;
-\/\/.* ;
-\/\*(.*\n)*.*\*\/ ;
+"/*"            { BEGIN(C_COMMENT); }
+"//"            { BEGIN(C_COMMENT_SINGLE);}
+<C_COMMENT>"*/" { BEGIN(0); }
+<C_COMMENT>\n   { }
+<C_COMMENT>.    { }
+<C_COMMENT_SINGLE>\n   {BEGIN(0); }
+<C_COMMENT_SINGLE>.    { }
 . fprintf(stderr,"error: invalid token: %s\n",yytext);
 %%
 /**int main(int argc, char **argv)

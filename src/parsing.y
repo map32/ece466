@@ -3,22 +3,33 @@
 #include <stdio.h>
 #include "ast.h"
 #include "helpers.h"
+#include "symtab.h"
 #include <string.h>
 struct astnode *root;
+symtab *symtab_file;
+symtab *symtab_cur;
+ERROR ** errors;
+int errnum;
 extern int yylex();
-extern int yyerror(char*);
+extern int yyerror();
 extern int yylineno;
 %}
 %define parse.error verbose
 %union{
   struct astnode *astnode;
-  struct astnode_stmts *astnode_stmt;
   struct s {
     unsigned int l;
     unsigned char* c;
 } s;
-  unsigned long long int i;
-  long double d;
+  struct n {
+	int type;
+	union {
+		unsigned long long int u;
+		long long int i;
+		long double f;
+	};
+  } n;
+  long long int i;
 }
 %start program
 /* declare tokens */
@@ -93,8 +104,7 @@ extern int yylineno;
 %type<astnode> direct_abstract_declarator direct_declarator parameter_list enum_specifier enumerator enumerator_list
 %type<astnode> funcdef external_declaration translation_unit declaration_list struct_declarator_list identifier_list abstract_declarator
 %type<s> CH ID STR TYPENAME
-%type<i> NUM
-%type<d> NUMF
+%type<n> NUM NUMF
 %type<i> uop aop type_qualifier type_qualifier_list storage_class_specifier strun
 %%
 program: translation_unit {root = $$;}
@@ -106,20 +116,20 @@ pexp: ID {$$=astIdent($1.c);}
  | '(' exp ')' {$$=$2;}
 ;
 
-number: NUM {$$=astNum(_integer,(void *)&$1);}
+number: NUM {$$=astNum($1.type == 0 ? _unsigned : _integer,(void *)&$1);}
  | NUMF {$$=astNum(_real,(void *)&$1);}
 ;
 
 constant: number
- | CH {int i; if ($1.l==2) i=0; else i=$1.c[0]; $$=astNum(_integer,(void *)&i);}
+ | CH {int i; if ($1.l==2) i=0; else i=$1.c[0]; $$=astNum(_unsigned,(void *)&i);}
 ; 
 
 postexp: pexp
- | postexp '[' exp ']' {$$ = astBinary($1,$3,'[');}
- | postexp '(' ')' {$$ = astBinary($1,NULL,'(');}
- | postexp '(' exp ')' {$$ = astBinary($1,$3,'(');}
+ | postexp '[' exp ']' {$$ = astUnary('*',astBinary($1,$3,'+'));}
+ | postexp '(' ')' {$$ = astCall($1,NULL);}
+ | postexp '(' exp ')' {$$ = astCall($1,$3);}
  | postexp '.' ID {$$ = astBinary($1,astIdent($3.c),'.');}
- | postexp ARROW ID {$$ = astBinary($1,astIdent($3.c),ARROW);}
+ | postexp ARROW ID {$$ = astBinary(astUnary('*',$1),astIdent($3.c),'.');}
  | postexp INC %prec POSTINC {$$ = astUnary(POSTINC,$1);}
  | postexp DEC %prec POSTDEC {$$ = astUnary(POSTDEC,$1);}
  ;
@@ -189,12 +199,12 @@ exp: aexp {$$ = astList($1);}
  ;
 
 aexp: ternary
- | unary aop aexp {$$ = astAssign($1,$3,$2);}
+ | unary aop aexp {$$ = astBinary($1,$3,$2);}
 ;
 
 decl
-	: declspec ';'
-	| declspec initdecllist ';' {$$=$2; bindDeclSpec($1,$2);}
+	: declspec ';' {$$=astList($1);}
+	| declspec initdecllist ';' {$$=$2; bindDeclSpec($1,$2); insertDecls(symtab_cur,$2,yylineno);}
 	;
 
 declspec
@@ -206,14 +216,16 @@ declspec
 	}}
 	| type_specifier {$$=astTypeSpec($1);}
 	| type_specifier declspec {
-		if (addTypeSpec($2,$1)) {
-			yyerror("invalid specifier combination");
+		int i = 0;
+		if (i=addTypeSpec($2,$1)) {
+			fprintf(stderr,"invalid specifier combination %d, %d %s",i, $2->type->scalar,gettoken($1->token));
 		}
+		$$=$2;
 	}
 	| type_qualifier {$$=astTypeQual(_convspec($1));}
 	| type_qualifier declspec {
 		$$=$2;
-		addTypeQual($2,_convspec($1));
+		addTypeQual($2,$1);
 	}
 	| INLINE
 	| INLINE declspec
@@ -226,7 +238,7 @@ initdecllist
 
 initdeclr
 	: declr 
-	| declr '=' init {$$=astAssign($1,$3,'=');}
+	| declr '=' init {$$=astBinary($1,$3,'=');}
 	;
 
 storage_class_specifier
@@ -255,21 +267,28 @@ type_specifier
 	;
 
 struct_or_union_specifier
-	: strun ID '{' struct_declaration_list '}' {$$ = astStrun($1,astIdent($2.c),$4);}
-	| strun '{' struct_declaration_list '}' {$$ = astStrun($1,NULL,$3);}
-	| strun ID {$$=astStrun($1,astIdent($2.c),NULL);}
+	: strun ID '{' {
+		$<astnode>$ = astStrun($1,astIdent($2.c),NULL);
+		insertStrun(symtab_cur,$<astnode>$,yylineno);
+	symtab_cur = createTable(symtab_cur,yylineno,SCOPE_OBJ);
+		} struct_declaration_list '}' {$<astnode>4->obj->members=$5; symtab_cur = symtab_cur->parent; setSymComplete(symtab_cur,$<astnode>4); $$=$<astnode>4;}
+	| strun '{' {
+		$<astnode>$ = astStrun($1,astIdent("(anonymous)"),NULL);
+		insertStrun(symtab_cur,$<astnode>$,yylineno);
+	symtab_cur = createTable(symtab_cur,yylineno,SCOPE_OBJ);} struct_declaration_list '}' {$<astnode>3->obj->members=$4; symtab_cur = symtab_cur->parent; setSymComplete(symtab_cur,$<astnode>3); $<astnode>$=$<astnode>3;}
+	| strun ID {$<astnode>$=astStrun($1,astIdent($2.c),NULL); insertStrun(symtab_cur,$<astnode>$,yylineno);}
 	;
 strun: STRUCT {$$=STRUCT;}
 	| UNION {$$=UNION;}
 	;
 
 struct_declaration_list
-	: struct_declaration {$$=astList($1);}
-	| struct_declaration_list struct_declaration {insertAstList($1,$2);}
+	: struct_declaration
+	| struct_declaration_list struct_declaration {mergeLists($1,$2);}
 	;
 
 struct_declaration
-	: specifier_qualifier_list struct_declarator_list ';' {$$ = astBinary($1,$2,0);}
+	: specifier_qualifier_list struct_declarator_list ';' {$$=$2; bindDeclSpecStruct($1,$2); insertMembers(symtab_cur,$2,yylineno);}
 	;
 
 specifier_qualifier_list
@@ -291,8 +310,8 @@ struct_declarator_list
 	;
 
 struct_declarator
-	: declr {$$ = astMember($1,0)}
-	| ':' ternary {$$ = astMember(NULL,$2)}
+	: declr {$$ = astMember($1,0);}
+	| ':' ternary {$$ = astMember(astDecl(NULL),$2);}
 	| declr ':' ternary {$$ = astMember($1,$3);}
 	;
 
@@ -311,7 +330,7 @@ enumerator_list
 
 enumerator
 	: ID {$$=astIdent($1.c);}
-	| ID '=' ternary  {$$ = astAssign(astIdent($1.c),$3,'=');}
+	| ID '=' ternary  {$$ = astBinary(astIdent($1.c),$3,'=');}
 	;
 
 type_qualifier
@@ -321,7 +340,7 @@ type_qualifier
 	;
 
 declr
-	: pointer direct_declarator {$$=mergeLists($2->decl->type,$1);}
+	: pointer direct_declarator {mergeLists($2->decl->type,$1); $$=$2;}
 	| direct_declarator
 	;
 
@@ -329,23 +348,23 @@ direct_declarator
 	: ID {$$=astDecl(astIdent($1.c));}
 	| '(' declr ')' {$$=$2;}
 	| direct_declarator '[' type_qualifier_list aexp ']'
-	| direct_declarator '[' aexp ']' {insertAstListTail($1->type,astArray($3));}
+	| direct_declarator '[' aexp ']' {checkdeclr($1,AST_ARRAY,yylineno); insertAstListTail($1->decl->type,astArray($3));}
 	| direct_declarator '[' type_qualifier_list ']'
 	| direct_declarator '[' STATIC type_qualifier_list aexp ']'
 	| direct_declarator '[' STATIC aexp ']'
 	| direct_declarator '[' type_qualifier_list STATIC aexp ']'
 	| direct_declarator '[' type_qualifier_list '*' ']'
 	| direct_declarator '[' '*' ']'
-	| direct_declarator '(' parameter_type_list ')' {insertAstListTail($1->type,astFunc($3));}
-	| direct_declarator '(' identifier_list ')' {insertAstListTail($1->type,astFunc($3));}
-	| direct_declarator '(' ')' {insertAstListTail($1->type,astFunc(NULL)); $1->tail->value->len=0;}
+	| direct_declarator '(' parameter_type_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($3));}
+	| direct_declarator '(' identifier_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($3));}
+	| direct_declarator '(' ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc(NULL));}
 	;
 
 pointer
 	: '*' {$$=astList(astPtr(0));}
 	| '*' type_qualifier_list {$$=astList(astPtr($2));}
-	| '*' pointer {insertAstList($2,astPtr(0)); $$=$2;}
-	| '*' type_qualifier_list pointer {insertAstList($3,astPtr($2)); $$=$3;}
+	| '*' pointer {insertAstListTail($2,astPtr(0)); $$=$2;}
+	| '*' type_qualifier_list pointer {insertAstListTail($3,astPtr($2)); $$=$3;}
 	;
 
 type_qualifier_list
@@ -367,6 +386,7 @@ parameter_list
 parameter_declaration
 	: declspec declr {$$=$2; insertAstListTail($2->decl->type,$1);}
 	| declspec abstract_declarator {$$=$2; insertAstListTail($2->decl->type,$1);}
+	| declspec {$$=astList($1);}
 	;
 
 identifier_list
@@ -382,21 +402,21 @@ type_name
 abstract_declarator
 	: pointer {$$=astAbsDeclfromList($1);}
 	| direct_abstract_declarator
-	| pointer direct_abstract_declarator {$$=$2; mergeLists($2->decl->type,$1);}
+	| pointer direct_abstract_declarator {mergeLists($2->decl->type,$1); $$=$2; }
 	;
 
 direct_abstract_declarator
 	: '(' abstract_declarator ')' {$$=$2;}
 	| '[' ']' {$$=astAbsDecl(astArray(astNum(_integer,0)));}
 	| '[' aexp ']' {$$=astAbsDecl(astArray($2));}
-	| direct_abstract_declarator '[' ']' {insertAstListTail($1,astArray(astNum(_integer,0)));}
-	| direct_abstract_declarator '[' aexp ']' {insertAstListTail($1,astArray($3));}
+	| direct_abstract_declarator '[' ']' {checkdeclr($1,AST_ARRAY,yylineno); insertAstListTail($1,astArray(astNum(_integer,0)));}
+	| direct_abstract_declarator '[' aexp ']' {checkdeclr($1,AST_ARRAY,yylineno); insertAstListTail($1,astArray($3));}
 	| '[' '*' ']'
 	| direct_abstract_declarator '[' '*' ']'
 	| '(' ')' {$$=astList(astFunc(NULL));}
 	| '(' parameter_type_list ')' {$$=astList(astFunc($2));}
-	| direct_abstract_declarator '(' ')' {insertAstListTail($1,astFunc(NULL));}
-	| direct_abstract_declarator '(' parameter_type_list ')' {insertAstListTail($1,astFunc($3));}
+	| direct_abstract_declarator '(' ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1,astFunc(NULL));}
+	| direct_abstract_declarator '(' parameter_type_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1,astFunc($3));}
 	;
 
 init
@@ -435,7 +455,7 @@ stmt
 	;
 
 labelstmt
-	: ID ':' stmt {$$=astBinary(astIdent($1.c),$3,':');}
+	: ID ':' stmt {$$=astBinary(astIdent($1.c),$3,':'); insertLabel(symtab_cur,$$,yylineno);}
 	| CASE ternary ':' stmt {$$=astBinary($2,$4,CASE);}
 	| DEFAULT ':' stmt {$$=astBinary(NULL,$3,DEFAULT);}
 	;
@@ -445,13 +465,13 @@ exps: ';' {$$ = NULL;}
 ;
 
 compoundstmt
- : '{' '}' {$$=astList(NULL);}
- | '{' block_item_list '}' {$$=$2;}
+ : '{' '}' {$$=astBlockList(NULL);}
+ | '{' {symtab_cur = createTable(symtab_cur,yylineno,SCOPE_BLOCK);} block_item_list '}' {$$=$3; $<astnode>$->tbl = symtab_cur; symtab_cur = symtab_cur->parent;}
  ;
 
 block_item_list
- : block_item {$$=astList($1);}
- | block_item_list block_item {$$=$1; insertAstListTail($1,$2);}
+ : block_item {if ($1->nodetype != AST_LIST) $$=astBlockList($1); else $1->nodetype = AST_BLOCKLIST;}
+ | block_item_list block_item {$$=$1; if ($2->nodetype != AST_LIST) insertAstListTail($1,$2); else mergeLists($1,$2);}
  ;
 
 block_item
@@ -484,30 +504,27 @@ jmps
 	;
 
 translation_unit
-	: external_declaration {$$ = astList($1);}
-	| translation_unit external_declaration {insertAstListTail($1,$2);}
+	: external_declaration
+	| translation_unit external_declaration {mergeLists($1,$2);}
 	;
 
 external_declaration
-	: funcdef
+	: funcdef {$$=astList($1);}
 	| decl
 	;
 
 funcdef
-	: declspec declr declaration_list compoundstmt
-	| declspec declr compoundstmt {insertAstListTail($2->decl->type,$1); $$=astFuncDef($2,$2->decl->ident,$3);}
-	//| declr declaration_list stmtblock {$$=astFuncDef(NULL,$1,$2,$3);}
-	//| declr stmtblock {$$=astFuncDef(NULL,$1,NULL,$2);}
+	: declspec declr declaration_list compoundstmt {$$=astFuncDef($2,$2->decl->ident,$4); insertFuncDef(symtab_cur,$$,yylineno);}
+	| declspec declr compoundstmt {$$=astFuncDef($2->decl->type,$2->decl->ident,$3); bindDeclDef($1,$$); free($2->decl); insertFuncDef(symtab_cur,$$,yylineno);}
+	| declr declaration_list compoundstmt {insertAstListTail($1->decl->type,astTypeSpec(astToken(INT))); $$=astFuncDef($1,$1->decl->ident,$3);}
+	| declr compoundstmt {insertAstListTail($1->decl->type,astTypeSpec(astToken(INT))); $$=astFuncDef($1,$1->decl->ident,$2);}
 	;
 
 declaration_list
-	: decl {$$=astList($1);}
-	| declaration_list decl {insertAstList($1,$2);}
+	: decl
+	| declaration_list decl {mergeLists($1,$2);}
 	;
 
-stmts: stmt {$$ = astList($1);}
- | stmts stmt {insertAstList($1,$2);}
-;
 %%
 main(int argc, char **argv)
 {
@@ -527,6 +544,11 @@ main(int argc, char **argv)
       }
       return 0;
     }
+	symtab_file = createTable(NULL,0,SCOPE_FILE);
+	symtab_file->root = symtab_file;
+	symtab_cur = symtab_file;
+	errors = (ERROR**) malloc(sizeof(ERROR*)*1024);
+	errnum=0;
     yyparse();
     printast(root,0);
 }

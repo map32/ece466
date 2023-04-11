@@ -1,7 +1,11 @@
 #include "ast.h"
 #include "helpers.h"
+#include "symtab.h"
 #include <stdlib.h>
 #include <stdio.h>
+
+extern ERROR ** errors;
+extern errnum;
 
 struct astnode* newAst(int type) {
     struct astnode* ast = (struct astnode*)malloc(sizeof(astnode));
@@ -21,6 +25,8 @@ struct astnode_list* newAstList() {
 
 struct astnode_listnode* newAstListNode() {
     struct astnode_listnode* ast = (struct astnode_listnode*)malloc(sizeof(astnode_listnode));
+    ast->next = NULL;
+    ast->value = NULL;
     return ast;
 }
 
@@ -40,7 +46,9 @@ struct astnode* astNum(int type, void* value) {
     if (type==_real){
         mine->num->f = *((long double*)value);
     } else if (type==_integer) {
-        mine->num->i = *((unsigned long long*)value);
+        mine->num->i = *((long long int*)value);
+    } else if (type == _unsigned) {
+        mine->num->u = *((unsigned long long int*)value);
     }
     return mine;
 }
@@ -136,6 +144,9 @@ struct astnode* astParamList(struct astnode* left) {
 struct astnode* astStmtList(struct astnode* left) {
     return _list(left,AST_STMTLIST);
 }
+struct astnode* astBlockList(struct astnode* left) {
+    return _list(left,AST_BLOCKLIST);
+}
 struct astnode* _list(struct astnode* left, int type) {
     struct astnode* mine = newAst(type);
     mine->list = newAstList();
@@ -149,6 +160,7 @@ struct astnode* _list(struct astnode* left, int type) {
 struct astnode* astStrun(int token,struct astnode* tag, struct astnode* members) {
     if (token==STRUCT) return astStruct(tag,members);
     else if (token==UNION) return astUnion(tag,members);
+    else return NULL;
 }
 struct astnode* astStruct(struct astnode* tag, struct astnode* members) {
     return _obj(tag,members,AST_STRUCT);
@@ -164,7 +176,7 @@ struct astnode* _obj(struct astnode* tag, struct astnode* members,int t) {
     mine->obj = (struct astnode_obj*)malloc(sizeof(astnode_obj));
     mine->obj->tag = tag;
     mine->obj->members = members;
-    return _obj;
+    return mine;
 }
 struct astnode* astArray(struct astnode* size) {
     struct astnode* mine = newAst(AST_ARRAY);
@@ -173,7 +185,7 @@ struct astnode* astArray(struct astnode* size) {
     return mine;
     }
 
-struct astnode* astPtr(QUAL qual) {
+struct astnode* astPtr(enum QUAL qual) {
     struct astnode* mine = newAst(AST_PTR);
     mine->ptr = (struct astnode_ptr*)malloc(sizeof(astnode_ptr));
     mine->ptr->qual = qual;
@@ -199,20 +211,35 @@ void bindDeclSpec(struct astnode* declspec, struct astnode* decllist){
     struct astnode_listnode* a = decllist->list->head;
     while(a) {
         insertAstListTail(a->value->decl->type,declspec);
+        if (a->value->decl->type->list->head->value->nodetype == AST_IDENT) {
+            a->value->decl->type->list->head = a->value->decl->type->list->head->next;
+            a->value->decl->type->list->len -= 1;
+        }
         a = a->next;
     }
 }
 
-struct astnode* _intlist(int i, int type) {
-    struct astnode* mine = newAst(type);
-    mine->list = newAstList();
-    mine->list->head = newAstListNode();
-    mine->list->head->i = i;
-    mine->list->head->next = NULL;
-    mine->list->tail = mine->list->head;
-    mine->list->len=1;
-    return mine;
+void bindDeclDef(struct astnode* declspec, struct astnode* decl){
+    struct astnode_listnode* a = decl->funcdef->type->list->head;
+    insertAstListTail(decl->funcdef->type,declspec);
+    if (a->value->nodetype == AST_IDENT) {
+        decl->funcdef->type->list->head = a->next;
+        decl->funcdef->type->list->len -= 1;
+    }
 }
+
+void bindDeclSpecStruct(struct astnode* declspec, struct astnode* decllist){
+    struct astnode_listnode* a = decllist->list->head;
+    while(a) {
+        insertAstListTail(a->value->member->decl->decl->type,declspec);
+        if (a->value->member->decl->decl->type->list->head->value && a->value->member->decl->decl->type->list->head->value->nodetype == AST_IDENT) {
+            a->value->member->decl->decl->type->list->head = a->value->member->decl->decl->type->list->head->next;
+            a->value->member->decl->decl->type->list->len -= 1;
+        }
+        a = a->next;
+    }
+}
+
 
 struct astnode* _type() {
     struct astnode* mine = newAst(AST_TYPE);
@@ -228,13 +255,13 @@ struct astnode* _type() {
     return mine;
 }
 
-struct astnode* astTypeStg(STG stg) {
+struct astnode* astTypeStg(enum STG stg) {
     struct astnode* mine = _type();
     mine->type->stg = stg;
     return mine;
 }
 
-struct astnode* astTypeQual(QUAL q) {
+struct astnode* astTypeQual(enum QUAL q) {
     struct astnode* mine = _type();
     mine->type->qual = q;
     return mine;
@@ -242,7 +269,14 @@ struct astnode* astTypeQual(QUAL q) {
 
 struct astnode* astTypeSpec(struct astnode* spec) {
     struct astnode* mine = _type();
-    mine->type->specifier = spec;
+    if (spec->nodetype == AST_TOKEN) {
+        if(spec->token == UNSIGNED || spec->token == SIGNED) {
+            mine->type->sign = _convspec(spec->token);
+        } else mine->type->scalar = _convspec(spec->token);
+    } else {
+        mine->type->specifier = spec;
+        mine->type->scalar = SCALAR_OBJ;
+    }
     return mine;
 }
 
@@ -288,6 +322,8 @@ int _convspec(int token) {
         return STG_EXTERN;
         case STATIC:
         return STG_STATIC;
+        default:
+        return -1;
     };
 }
 
@@ -299,39 +335,44 @@ int addTypeStg(struct astnode* type, int stg) {
 }
 
 int addTypeSpec(struct astnode* type, struct astnode* spec) {
-    if (spec->nodetype == AST_TOKEN && (spec->token != SIGNED || spec->token != UNSIGNED)) {
+    if (spec->nodetype == AST_TOKEN && (spec->token != SIGNED && spec->token != UNSIGNED)) {
         int t = spec->token;
         int k = type->type->scalar;
         if (k == SCALAR_OBJ || k == SCALAR_CHAR || k == SCALAR_FLOAT ||
-        SCALAR_LONGDOUBLE || SCALAR_LONGLONGINT || k == SCALAR_SHORTINT 
-        || SCALAR_VOID) return 1;
-        if (k == SCALAR_NONE) {k = _convspec(t); return 0;}
-        if (t == LONG) {
+        k == SCALAR_LONGDOUBLE || k == SCALAR_LONGLONGINT || k == SCALAR_SHORTINT 
+        || k == SCALAR_VOID) return 1;
+        if (k == SCALAR_NONE) {k = _convspec(t); type->type->scalar = k; return 0;}
+        else if (t == LONG) {
             if (k == SCALAR_INT) k = SCALAR_LONGINT;
             else if (k == SCALAR_DOUBLE) k = SCALAR_LONGDOUBLE;
             else if (k == SCALAR_LONGINT) k = SCALAR_LONGLONGINT;
             else if (k == SCALAR_LONG) k = SCALAR_LONGLONG;
-            else return 1;
+            else return 2;
         } else if (t == INT) {
             if (k == SCALAR_LONG) k = SCALAR_LONGINT;
             else if (k == SCALAR_LONGLONG) k = SCALAR_LONGLONGINT;
             else if (k == SCALAR_SHORT) k = SCALAR_SHORTINT;
-            else return 1;
+            else return 3;
         } else if (t == SHORT) {
             if (k == SCALAR_INT) k = SCALAR_SHORTINT;
-            return 1;
-        } else return 1;
+            return 4;
+        } else return 5;
+        type->type->scalar = k;
+        return 0;
     } else if (spec->nodetype == AST_TOKEN) {
+        printast(spec,0);
+        printast(type,0);
         if (type->type->sign == SIGN_NONE) type->type->sign = _convspec(spec->token);
-        else return 1;
+        else return 6;
     } else {
         if (type->type->scalar == SCALAR_NONE) {
             type->type->scalar = SCALAR_OBJ;
             type->type->specifier = spec;
             return 0;
         }
-        return 1;
+        return 7;
     }
+    return 0;
 }
 
 int addTypeQual(struct astnode* type, int qual) {
@@ -388,6 +429,7 @@ void insertAstIntList(struct astnode* l, int i) {
 struct astnode* mergeLists(struct astnode* l, struct astnode* r) {
     l->list->tail->next = r->list->head;
     l->list->len += r->list->len;
+    l->list->tail = r->list->tail;
     free(r);
     return l;
 }
@@ -400,6 +442,15 @@ struct astnode* astMember(struct astnode* decl, struct astnode* bits) {
     return m;
 }
 
+void checkdeclr(astnode* declr, _A asttype, int lineno) {
+    _A declrtail = declr->list->tail->value->nodetype;
+    if (declrtail == AST_FUNC) {
+        if (asttype == AST_FUNC || asttype == AST_ARRAY) {
+            errors[errnum] = getError(lineno, "A function cannot return a function or an array.\n");
+        }
+    }
+}
+
 void _pastdepth(int depth) {
     int i;
     for(i=0;i<depth;i++) fprintf(stderr,"  ");
@@ -407,7 +458,8 @@ void _pastdepth(int depth) {
 
 void printast(struct astnode* node,int depth) {
     if (node == NULL) return;
-    if (node->nodetype != AST_LIST ) _pastdepth(depth);
+    if (node->nodetype != AST_LIST && node->nodetype != AST_BLOCKLIST ) _pastdepth(depth);
+    struct symrec* rec;
     switch(node->nodetype) {
         case AST_IDENT:
         printf("ID %s\n",node->ident->name);
@@ -438,16 +490,18 @@ void printast(struct astnode* node,int depth) {
         printast(node->binop->right,depth+1);
         break;
         case AST_LIST:
-        if (node->list->len>1){
+        case AST_BLOCKLIST:
+        if (node->list->len>0){
             struct astnode_listnode* cur;
             cur = node->list->head;
             _pastdepth(depth);
+            if (node->nodetype == AST_BLOCKLIST) {printf("START OF BLOCK: ");}
             printf("LIST, length: %d\n",node->list->len);
             while (cur) {
                 printast(cur->value,depth+1);
                 cur = cur->next;
             }
-        } else {
+        } else if (node->list->len>0){
             printast(node->list->head->value,depth);
         }
         break;
@@ -460,7 +514,7 @@ void printast(struct astnode* node,int depth) {
         printf("POINTER\n");
         break;
         case AST_ARRAY:
-        printf("ARRAY, SIZE=%d\n",node->array->size->num->i);
+        printf("ARRAY, SIZE=%d\n",(int)(node->array->size->num->i));
         break;
         case AST_FUNC:
         printf("FUNC\n");
@@ -473,8 +527,11 @@ void printast(struct astnode* node,int depth) {
         printast(node->ternop->right,depth+1);
         break;
         case AST_DECL:
-        printf("DECLARATION\n");
-        printast(node->decl->ident,depth+1);
+        if (node->decl->ident) {
+            rec = findsym(node->tbl,node->decl->ident->ident->name,NAMESPACE_OTHERS);
+            printf("DECLARATION line:%d\n",rec ? rec->lineno : -1);
+            printast(node->decl->ident,depth+1);
+        }
         printast(node->decl->type,depth+1);
         break;
         case AST_ABSDECL:
@@ -482,29 +539,36 @@ void printast(struct astnode* node,int depth) {
         printast(node->decl->type,depth+1);
         break;
         case AST_STRUCT:
-        printf("STRUCT DECLARATION\n");
+        rec = findsym(node->tbl,node->obj->tag->ident->name,NAMESPACE_TAGS);
+        printf("STRUCT DECLARATION line:%d,\n",rec->lineno);
         printast(node->obj->tag,depth+1);
         printast(node->obj->members,depth+1);
         break;
         case AST_UNION:
-        printf("UNION DECLARATION\n");
+        rec = findsym(node->tbl,node->obj->tag->ident->name,NAMESPACE_TAGS);
+        printf("UNION DECLARATION line:%d\n",rec->lineno);
         printast(node->obj->tag,depth+1);
         printast(node->obj->members,depth+1);
         break;
         case AST_TYPE:
-        printf("DECL SPECIFIER\n");
+        astnode_type* t = node->type;
+        printf("%s %s %s %s\n",TEXT_STG[t->stg],TEXT_QUAL[t->qual],TEXT_SIGN[t->sign],TEXT_SCALAR[t->scalar]);
         printast(node->type->specifier,depth+1);
-        printf("  %d %d %d %d %d",node->type->scalar,node->type->qual,
-        node->type->stg,node->type->sign,node->type->complete);
         break;
         case AST_FUNCDEF:
-        printf("FUNCTION DEFINITION\n");
+        rec = findsym(node->tbl,node->funcdef->ident->ident->name,NAMESPACE_OTHERS);
+        printf("FUNCTION DEFINITION line: %d\n",rec->lineno);
         printf("1.TYPE\n");
         printast(node->funcdef->type,depth+1);
         printf("2.IDENT\n");
         printast(node->funcdef->ident,depth+1);
         printf("3.STATEMENT BLOCK\n");
         printast(node->funcdef->stmt,depth+1);
+        break;
+        case AST_MEMBER:
+        printf("STRUCT/UNION/ENUM MEMBER\n");
+        printast(node->member->bits,depth+1);
+        printast(node->member->decl,depth+1);
         break;
         default:
         printf("unknown astnode encountered! nodetype: %d",node->nodetype);
