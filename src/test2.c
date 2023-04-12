@@ -1,10 +1,8 @@
-int s()
-{
- int i;
-	switch(i)
-	{
-	 case 1:printf("one\n");break;
-	 case 2:printf("two\n");
-	 default:printf("more\n");
-	}
+
+int aa[32][10];
+int (*a)[32][10];
+int main(){
+	a = &aa;
+    (*a)[3][4] = 10;
+	return 0;
 }

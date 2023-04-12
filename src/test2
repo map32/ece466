@@ -23,3 +23,7 @@ void f(void)
 	}
 	struct s1 s1;		/* Not a dup defn! */
 }
+int aa[32][10];
+int *a[32][10];
+
+(*a)[3][4] = 10;

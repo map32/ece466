@@ -110,7 +110,10 @@ extern int yylineno;
 program: translation_unit {root = $$;}
 ;
 
-pexp: ID {$$=astIdent($1.c);}
+pexp: ID {$$=astIdent($1.c);
+symrec* rec = findsym(symtab_cur,$1.c,NAMESPACE_OTHERS);
+if (!rec) {errors[errnum] = getError(lineno,"primary expression not found"); errnum++;}
+}
  | constant
  | STR {$$=astString($1.c);}
  | '(' exp ')' {$$=$2;}
