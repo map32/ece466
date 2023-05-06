@@ -31,7 +31,8 @@ typedef enum _A {
     AST_FUNC,
     AST_STMTLIST,
     AST_TOKEN,
-    AST_FUNCDEF
+    AST_FUNCDEF,
+    AST_TEMPORARY
 } _A;
 
 
@@ -112,9 +113,12 @@ typedef struct astnode {
     struct astnode_funcdef* funcdef;
     struct astnode_member* member;
     int token;
+    int temp;
     char* string;
     };
     struct symtab* tbl;
+    int size;
+    struct astnode_listnode* t;
 } astnode;
 
 enum numtype {
@@ -284,6 +288,7 @@ struct astnode* astToken(int);
 struct astnode* mergeLists(struct astnode* ,struct astnode* );
 struct astnode* astMember(struct astnode* ,struct astnode* );
 struct astnode* astBlockList(struct astnode*);
+struct astnode* astTemporary();
 void insertAstIntList(struct astnode* left, int i);
 void insertAstList(struct astnode* left, struct astnode* right);
 void insertAstListTail(struct astnode*, struct astnode*);

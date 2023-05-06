@@ -5,11 +5,58 @@
 #include <stdio.h>
 
 extern ERROR ** errors;
-extern errnum;
+extern int errnum;
+extern yylineno;
+
+int typeSize(astnode_listnode* node) {
+    int i = 1;
+    astnode* type = node->value;
+    astnode_listnode* h;
+    if (!type) return i;
+    switch(type->nodetype) {
+        case AST_PTR:
+            return 8;
+        case AST_ARRAY:
+            return type->array->size->num->i * typeSize(node->next);
+        case AST_TYPE:
+            switch(type->type->scalar){
+                case SCALAR_CHAR:
+                    return 1;
+                    break;
+                case SCALAR_SHORT:
+                case SCALAR_SHORTINT:
+                case SCALAR_INT:
+                case SCALAR_LONG:
+                case SCALAR_LONGINT:
+                case SCALAR_FLOAT:
+                case SCALAR_NONE:
+                    return 4;
+                    break;
+                case SCALAR_LONGLONG:
+                case SCALAR_LONGLONGINT:
+                    return 8;
+                    break;
+                case SCALAR_LONGDOUBLE:
+                    return 10;
+                    break;
+                case SCALAR_OBJ:
+                    h = type->type->specifier->obj->members->list->head;
+                    i=0;
+                    while(h) {
+                        i += typeSize(h->value->member->decl->decl->type->list->head);
+                        h = h->next;
+                    }
+                    return i;
+                    break;
+            }
+    }
+    return -1;
+}
 
 struct astnode* newAst(int type) {
     struct astnode* ast = (struct astnode*)malloc(sizeof(astnode));
     ast->nodetype=type;
+    ast->t=NULL;
     return ast;
 }
 
@@ -39,17 +86,41 @@ struct astnode* astFuncDef(struct astnode* a, struct astnode* b, struct astnode*
     return mine;
 }
 
+struct astnode* astTemporary(struct astnode* a, struct astnode* b, struct astnode* c){
+    struct astnode* mine = newAst(AST_TEMPORARY);
+    return mine;
+}
+
 struct astnode* astNum(int type, void* value) {
     struct astnode* mine = newAst(AST_NUM);
     mine->num = (struct astnode_num*)malloc(sizeof(astnode_num));
     mine->num->type = type;
+    mine->t=newAstListNode();
     if (type==_real){
         mine->num->f = *((long double*)value);
+        mine->t->value=astTypeSpec(astToken(DOUBLE));
+        addTypeSpec(mine->t->value,astToken(LONG));
     } else if (type==_integer) {
         mine->num->i = *((long long int*)value);
+        mine->t->value=astTypeSpec(astToken(LONG));
+        addTypeSpec(mine->t->value,astToken(LONG));
+        addTypeSpec(mine->t->value,astToken(INT));
     } else if (type == _unsigned) {
         mine->num->u = *((unsigned long long int*)value);
+        mine->t->value=astTypeSpec(astToken(LONG));
+        addTypeSpec(mine->t->value,astToken(LONG));
+        addTypeSpec(mine->t->value,astToken(INT));
+        addTypeSpec(mine->t->value,astToken(UNSIGNED));
     }
+    return mine;
+}
+
+struct astnode* astIntegral(int value) {
+    struct astnode* mine = newAst(AST_NUM);
+    mine->num = (struct astnode_num*)malloc(sizeof(astnode_num));
+    mine->num->type = _integer;
+    mine->t=newAstListNode();
+    addTypeSpec(mine->t->value,astToken(INT));
     return mine;
 }
 
@@ -58,12 +129,55 @@ struct astnode* astUnary(int left, struct astnode* right) {
     mine->uop = (struct astnode_uop*)malloc(sizeof(astnode_uop));
     mine->uop->op = left;
     mine->uop->right = right;
+    mine->t = right->t;
+    astnode_listnode* a;
+    switch (left) {
+        case '*':
+            if(!isPtrOrArr(right)) {
+                errors[errnum] = getError(yylineno,"cannot dereference the type");
+                errnum++;
+            } else {
+                mine->t = mine->t->next;
+            }
+            break;
+        case '&':
+                a = newAstListNode();
+                a->value=astPtr(QUAL_NONE);
+                a->next = mine->t;
+                mine->t = a;
+            break;
+        case SIZEOF:
+                mine->t = right->decl->type->list->head;
+            break;
+        case '~':
+        break;
+        case '!':
+        if (!isIntegral(right->t->value)) {
+            errors[errnum] = getError(yylineno,"not an integral type on unary not");
+            errnum++;
+        } else {
+            mine->t = right->t;
+        }
+        case '-':
+        case '+':
+        if (!isNumeric(right->t->value)) {
+            errors[errnum] = getError(yylineno,"not a numeric type on unary pos/neg");
+            errnum++;
+        } else {
+            mine->t = right->t;
+        }
+        default:
+            mine->t=right->t;
+    }
     return mine;
 }
 
 struct astnode* astString(char* str) {
     struct astnode* mine = newAst(AST_STRING);
     mine->string = str;
+    mine->t=newAstListNode();
+    mine->t->value=astPtr(QUAL_NONE);
+    mine->t->next=astTypeSpec(astToken(CHAR));
     return mine;
 }
 struct astnode* astIdent(char* id) {
@@ -72,9 +186,170 @@ struct astnode* astIdent(char* id) {
     mine->ident->name = id;
     return mine;
 }
+int isNumeric(astnode* a) {
+    if (a->nodetype != AST_TYPE) return 0;
+    SCALAR s = a->type->scalar;
+    return s != SCALAR_NONE && s != SCALAR_OBJ && s != SCALAR_VOID;
+}
+int isIntegral(astnode* a) {
+    if (a->nodetype != AST_TYPE) return 0;
+    SCALAR s = a->type->scalar;
+    return isNumeric(a) && (a->type->scalar == SCALAR_CHAR || a->type->scalar == SCALAR_INT ||
+    a->type->scalar == SCALAR_LONG || a->type->scalar == SCALAR_LONG || a->type->scalar == SCALAR_LONGINT ||
+    a->type->scalar == SCALAR_LONGLONG || a->type->scalar == SCALAR_LONGLONGINT || a->type->scalar == SCALAR_SHORT || 
+    a->type->scalar == SCALAR_SHORTINT); 
+}
+int isFloating(astnode* a) {
+    if (a->nodetype != AST_TYPE) return 0;
+    SCALAR s = a->type->scalar;
+    return isNumeric(a) && (a->type->scalar == SCALAR_FLOAT || a->type->scalar == SCALAR_DOUBLE ||
+    a->type->scalar == SCALAR_LONGDOUBLE); 
+}
+int isPtr(astnode* a) {
+    if (a->nodetype != AST_PTR) return 0;
+    return 1;
+}
+int isArr(astnode* a) {
+    if (a->nodetype != AST_ARRAY) return 0;
+    return 1;
+}
+int isPtrOrArr(astnode* a) {
+    return isArr(a) || isPtr(a);
+}
+int getScalarWidth(SCALAR s) {
+    switch(s) {
+        case SCALAR_CHAR:
+        return 1;
+        case SCALAR_DOUBLE:
+        return 8;
+        case SCALAR_FLOAT:
+        return 4;
+        case SCALAR_INT:
+        case SCALAR_LONG:
+        case SCALAR_LONGINT:
+        return 4;
+        case SCALAR_LONGDOUBLE:
+        return 10;
+        case SCALAR_SHORT:
+        case SCALAR_SHORTINT:
+        return 2;
+        default:
+        return 0;
+    }
+}
+SCALAR getScalarTypeFromWidthAndFloat(int width, int fl) {
+    if (fl) {
+        if (width <= 8) return SCALAR_DOUBLE;
+        if (width == 10) return SCALAR_LONGDOUBLE;
+        else return SCALAR_VOID;
+    } else {
+        if (width <= 4) return SCALAR_INT;
+        if (width <= 8) return SCALAR_LONGLONGINT;
+        else return SCALAR_VOID;
+    }
+}
+SCALAR biggerScalar(astnode* a, astnode* b) {
+    int fl = 0;
+    if (!isIntegral(a->t->value) || !isIntegral(b->t->value)) fl = 1;
+    if (getScalarWidth(a->t->value->type->scalar) >= getScalarWidth(b->t->value->type->scalar)) {
+        return getScalarTypeFromWidthAndFloat(getScalarWidth(a->t->value->type->scalar),fl);
+    } else return getScalarTypeFromWidthAndFloat(getScalarWidth(b->t->value->type->scalar),fl);
 
+}
 struct astnode* astBinary(struct astnode* left, struct astnode* right, int op) {
-    return _binop(left,right,op,AST_BINARY);
+    astnode* a = _binop(left,right,op,AST_BINARY);
+    /**ary($1,$3,'*');}
+ | binary '/' binary {$$ = astBinary($1,$3,'/');}
+ | binary '%' binary {$$ = astBinary($1,$3,'%');}
+ | binary '+' binary {$$ = astBinary($1,$3,'+');}
+ | binary '-' binary {$$ = astBinary($1,$3,'-');}
+ | binary LSHIFT binary {$$ = astBinary($1,$3,LSHIFT);}
+ | binary RSHIFT binary {$$ = astBinary($1,$3,RSHIFT);}
+ | binary '<' binary {$$ = astBinary($1,$3,'<');}
+ | binary '>' binary {$$ = astBinary($1,$3,'>');}
+ | binary LE binary {$$ = astBinary($1,$3,LE);}
+ | binary GE binary {$$ = astBinary($1,$3,GE);}
+ | binary NE binary {$$ = astBinary($1,$3,NE);}
+ | binary EQ binary {$$ = astBinary($1,$3,EQ);}
+ | binary '&' binary {$$ = astBinary($1,$3,'&');}
+ | binary '^' binary {$$ = astBinary($1,$3,'^');}
+ | binary '|' binary {$$ = astBinary($1,$3,'|');}
+ | binary AND binary {$$ = astBinary($1,$3,AND);}
+ | binary OR binary {$$ = astBinary($1,$3,OR);}**/
+    switch(op) {
+        case '*':
+        case '/':
+        if (!isNumeric(left->t->value) || !isNumeric(right->t->value)) {
+            errors[errnum] = getError(yylineno,"not a numeric type on mul/div");
+            errnum++;
+        } else {
+            a->t = newAstListNode();
+            a->t->value = astTypeSpec(astToken(INT));
+            a->t->value->type->scalar = biggerScalar(left,right);
+        }
+        break;
+        case '%':
+        case LSHIFT:
+        case RSHIFT:
+        case '<':
+        case '>':
+        case LE:
+        case GE:
+        case NE:
+        case EQ:
+        case '&':
+        case '^':
+        case '|':
+        if (!isIntegral(left->t->value) || !isIntegral(right->t->value)) {
+            errors[errnum] = getError(yylineno,"not an integral type on mod/shift/bitwise operation");
+            errnum++;
+        } else {
+            a->t = newAstListNode();
+            a->t->value = astTypeSpec(astToken(INT));
+            a->t->value->type->scalar = biggerScalar(left,right);
+        }
+        break;
+        case '+':
+        case '-':
+        if (isPtrOrArr(left->t->value) ^ isPtrOrArr(right->t->value)) {
+            if (isArr(left->t->value) && isIntegral(right->t->value)) {
+                a->t = newAstListNode();
+                a->t->value = astPtr(QUAL_NONE);
+                a->t->next = left->t->next;
+            } else if (isArr(right->t->value) && isIntegral(right->t->value)) {
+                a->t = newAstListNode();
+                a->t->value = astPtr(QUAL_NONE);
+                a->t->next = right->t->next;
+            } else if (isPtr(left->t->value) && isIntegral(right->t->value)){
+                a->t = left->t;
+            } else if (isPtr(right->t->value) && isIntegral(left->t->value)){
+                a->t = right->t;
+            } else {
+                errors[errnum] = getError(yylineno,"cannot do pointer arithmetic with non-integral numbers");
+                errnum++;
+            }
+        } else if (!isNumeric(left->t->value) || !isNumeric(right->t->value)) {
+            errors[errnum] = getError(yylineno,"not a numeric type on add/sub");
+            errnum++;
+        } else {
+            a->t = newAstListNode();
+            a->t->value = astTypeSpec(astToken(INT));
+            a->t->value->type->scalar = biggerScalar(left,right);
+        }
+        break;
+        case AND:
+        case OR:
+        a->t = newAstListNode();
+        a->t->value = astTypeSpec(astToken(INT));
+        break;
+        case '=':
+        a->t = left->t;
+        break;
+        case CAST:
+        a->t = left->decl->type->list->head;
+        break;
+    }
+    return a;
 }
 
 struct astnode* _binop(struct astnode* left, struct astnode* right, int op, int type) {
@@ -447,6 +722,7 @@ void checkdeclr(astnode* declr, _A asttype, int lineno) {
     if (declrtail == AST_FUNC) {
         if (asttype == AST_FUNC || asttype == AST_ARRAY) {
             errors[errnum] = getError(lineno, "A function cannot return a function or an array.\n");
+            errnum++;
         }
     }
 }
@@ -456,16 +732,51 @@ void _pastdepth(int depth) {
     for(i=0;i<depth;i++) fprintf(stderr,"  ");
 }
 
+/*void printtype(struct astnode_listnode* node, int depth) {
+    if(!node) return;
+    _pastdepth(depth);
+    while(node) {
+        switch(node->value->nodetype) {
+            case AST_PTR:
+            printf("ptr->");
+            break;
+            case AST_FUNC:
+            printf("func with params\n");
+            printast(node->value->func->params,depth);
+            break;
+            case AST_FUNCDEF:
+            printf("func with params\n");
+            printast(node->value->funcdef->type,depth);
+            break;
+            case AST_ARRAY:
+            printf("array(size=%d)->",node->value->array->size->num->u);
+            case AST_TYPE:
+            astnode_type* t = node->type;
+            printf("%s %s %s %s\n",TEXT_STG[t->stg],TEXT_QUAL[t->qual],TEXT_SIGN[t->sign],TEXT_SCALAR[t->scalar]);
+            printast(node->type->specifier,depth+1);
+        }
+    }
+}*/
+
 void printast(struct astnode* node,int depth) {
     if (node == NULL) return;
     if (node->nodetype != AST_LIST && node->nodetype != AST_BLOCKLIST ) _pastdepth(depth);
     struct symrec* rec;
+    astnode_listnode* n = node->t;
     switch(node->nodetype) {
         case AST_IDENT:
         printf("ID %s\n",node->ident->name);
+        while(n) {
+            printast(n->value,depth+1);
+            n = n->next;
+        }
         break;
         case AST_STRING:
         printf("STR %s\n",node->string);
+        while(n) {
+            printast(n->value,depth+1);
+            n = n->next;
+        }
         break;
         case AST_NUM:
         if (node->num->type==_integer) {
@@ -473,6 +784,12 @@ void printast(struct astnode* node,int depth) {
 
         } else if (node->num->type==_real){
             printf("NUM %Lf\n",(node->num->f));
+        } else if (node->num->type==_unsigned) {
+            printf("NUM %llu\n",node->num->u);
+        }
+        while(n) {
+            printast(n->value,depth+1);
+            n = n->next;
         }
         break;
         case AST_TOKEN:
@@ -481,11 +798,21 @@ void printast(struct astnode* node,int depth) {
         case AST_UNARY:
         if (node->uop->op<256) printf("UNARY %c\n",node->uop->op);
         else printf("UNARY %s\n",gettoken(node->uop->op));
+        n = node->t;
+        while(n) {
+            printast(n->value,depth+1);
+            n = n->next;
+        }
         printast(node->uop->right,depth+1);
         break;
         case AST_BINARY:
         if (node->binop->op<256) printf("BINARY %c\n",node->binop->op);
         else printf("BINARY %s\n",gettoken(node->binop->op));
+        n = node->t;
+        while(n) {
+            printast(n->value,depth+1);
+            n = n->next;
+        }
         printast(node->binop->left,depth+1);
         printast(node->binop->right,depth+1);
         break;

@@ -112,7 +112,8 @@ program: translation_unit {root = $$;}
 
 pexp: ID {$$=astIdent($1.c);
 symrec* rec = findsym(symtab_cur,$1.c,NAMESPACE_OTHERS);
-if (!rec) {errors[errnum] = getError(lineno,"primary expression not found"); errnum++;}
+if (!rec) {errors[errnum] = getError(yylineno,"primary expression not found"); errnum++;}
+else {$$->t = rec->type->head;}
 }
  | constant
  | STR {$$=astString($1.c);}
@@ -553,6 +554,7 @@ main(int argc, char **argv)
 	errors = (ERROR**) malloc(sizeof(ERROR*)*1024);
 	errnum=0;
     yyparse();
+	printErrors(errors,errnum);
     printast(root,0);
 }
 

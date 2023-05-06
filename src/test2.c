@@ -1,8 +1,11 @@
-
-int aa[32][10];
-int (*a)[32][10];
+#include <stdio.h>
 int main(){
-	a = &aa;
-    (*a)[3][4] = 10;
+	fib(5);
 	return 0;
+}
+
+int fib(int a)
+{
+	if (a<2) return 1;
+ return fib(a-1) + fib(a-2);
 }

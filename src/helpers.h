@@ -9,3 +9,4 @@ char* gettoken(int);
 void printchar(unsigned char);
 void printtokens(int,char*,int,YYSTYPE);
 ERROR* getError(int,char*);
+void printErrors(ERROR**,int);

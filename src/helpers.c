@@ -11,6 +11,12 @@ ERROR* getError(int lineno, char* text) {
     return e;
 }
 
+void printErrors(ERROR** errors, int errnum) {
+    for(int i=0;i<errnum;i++) {
+        printf("%d: %s\n",errors[i]->lineno,errors[i]->text);
+    }
+}
+
 char* gettoken(int t) {
     char a[] = " ";
     switch(t) {

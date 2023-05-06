@@ -1,13 +1,7 @@
 int e;
 
-int g()
+int fib(int a)
 {
- int a;
- 	a++;
-	goto future;
-	--e;
-	future:
-	 past:
-	  if (a)
-	    e/=3ll;
+	if (a<2) return 1;
+ return fib(a-1) + fib(a-2);
 }
