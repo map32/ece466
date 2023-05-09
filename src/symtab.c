@@ -78,7 +78,7 @@ struct symrec* insertFuncDef(struct symtab* table, struct astnode* data, int lin
         rec->symtype = SYM_FUNC;
         rec->lineno = lineno;
         rec->complete = 1;
-        rec->type = data->funcdef->type->list;
+        rec->type = data->funcdef->type->decl->type->list;
         rec->namespace = NAMESPACE_OTHERS;
         data->tbl = table;
         table->rownum += 1;

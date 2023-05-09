@@ -1,59 +1,88 @@
 #include "ast.h"
 #include "symtab.h"
 #include "parsing.tab.h"
-int quads[128][1024][4];
+#include "quad.h"
+#include "stdlib.h"
+quads q;
+blockss blocks;
+int curblock;
+void getBlocks() {
+    blocks.blocks = (block*)malloc(sizeof(block)*1024);
+    blocks.cap = 1024;
+    blocks.len = 0;
+}
 
-typedef enum q {
-    q_add,
-    q_addq,
-    q_addf,
-    q_sub,
-    q_subq,
-    q_subf,
-    q_mul,
-    q_mulf,
-    q_div,
-    q_divf,
-    q_mod,
-    q_load,
-    q_store,
-    q_eq,
-    q_ne,
-    q_ge,
-    q_le,
-    q_lt,
-    q_gt,
-    q_rt,
-    q_and,
-    q_or,
-    q_xor,
-    q_not,
-    q_lea,
-    q_lsh,
-    q_rsh,
-    q_mov,
-    q_itof,
-    q_ftoi,
-    q_lea,
-    q_call
-} q;
+block* newBlock(symrec* sym) {
+    block* b = &blocks.blocks[blocks.len];
+    b->id = blocks.len;
+    q = b->q;
+    b->sym = sym;
+    blocks.len++;
+    return b;
+}
+block* curBlock() {
+    return &blocks.blocks[blocks.len-1];
+}
+block* getBlock(int i) {
+    return &blocks.blocks[i];
+}
 
-typedef struct quad {
-    int opcode;
-    astnode* dest;
-    astnode* src1;
-    astnode* src2;
-} quad;
+astnode* gen_stmt(astnode* node) {
+    if (node->nodetype == AST_BLOCKLIST) {
+        
+    }
+}
 
-typedef struct val {
-    int symnum;
-    astnode_listnode* type;
-    int typesize;
-    int offset;
-    int num;
-    double dnum;
-} val;
-
+astnode* gen_if(astnode* node) {
+    quads qq = q;
+    block* a = newBlock(0);
+    block* b = newBlock(0);
+    q = qq;
+    gen_condexpr(node->ternop->cond,a,b);
+    q = a->q;
+    gen_expr(node->ternop->left);
+    if (node->ternop->right) {
+        block* c = newBlock(0);
+        gen_expr(node->ternop->right);
+    }
+    q = b->q;
+}
+void gen_condexpr(astnode* node,block* a, block* b) {
+    if (node->nodetype == AST_LIST) {
+        node = node->list->head->value;
+    }
+    if (node->nodetype == AST_BINARY) {
+        astnode* l = gen_rval(node->binop->left,0);
+        astnode* r = gen_rval(node->binop->right,0);
+        if(node->binop->op == EQ) {
+            emit(q_cmp,l,r,0);
+            emit(q_eq,astIntegral(a->id),astIntegral(b->id),0);
+        } else if(node->binop->op == NE) {
+            emit(q_cmp,l,r,0);
+            emit(q_ne,astIntegral(a->id),astIntegral(b->id),0);
+        } else if(node->binop->op == GE) {
+            emit(q_cmp,l,r,0);
+            emit(q_ge,astIntegral(a->id),astIntegral(b->id),0);
+        } else if(node->binop->op == LE) {
+            emit(q_cmp,l,r,0);
+            emit(q_le,astIntegral(a->id),astIntegral(b->id),0);
+        } else if(node->binop->op == '>') {
+            emit(q_cmp,l,r,0);
+            emit(q_gt,astIntegral(a->id),astIntegral(b->id),0);
+        } else if(node->binop->op == '<') {
+            emit(q_cmp,l,r,0);
+            emit(q_lt,astIntegral(a->id),astIntegral(b->id),0);
+        } else {
+            astnode* aa = gen_rval(node,0);
+            emit(q_cmp,aa,astIntegral(0),0);
+            emit(q_ne,astIntegral(a->id),astIntegral(b->id),0);
+        }
+    } else if (node->nodetype == AST_UNARY) {
+        astnode* l = gen_rval(node,0);
+        emit(q_cmp,l,astIntegral(0),0);
+        emit(q_ne,astIntegral(a->id),astIntegral(b->id),0);
+    }
+}
 astnode* gen_rval(astnode* node, astnode* target) {
     if (node->nodetype == AST_NUM) {
         return node;
@@ -70,16 +99,16 @@ astnode* gen_rval(astnode* node, astnode* target) {
         if (!target) target = astTemporary();
         switch (node->binop->op) {
             case '+':
-                if (isPtrOrArr(node->binop->left)) {
-                    emit(q_mul,right,astIntegral(typeSize(node->binop->left->t->value)),target);
-                    target = astTemporary();
-                    emit(q_add,left,right,target);
-                    return target;
-                } else if (isPtrOrArr(node->binop->right)) {
-                    emit(q_mul,left,astIntegral(typeSize(node->binop->left->t->value)),target);
-                    target = astTemporary();
-                    emit(q_add,right,left,target);
-                    return target;
+                if (isPtrOrArr(node->binop->left->t->value)) {
+                    emit(q_mul,right,(astnode*)astIntegral(typeSize(node->binop->left->t->next)),target);
+                    astnode* target2 = astTemporary();
+                    emit(q_add,left,target,target2);
+                    return target2;
+                } else if (isPtrOrArr(node->binop->right->t->value)) {
+                    emit(q_mul,left,(astnode*)astIntegral(typeSize(node->binop->left->t->next)),target);
+                    astnode* target2 = astTemporary();
+                    emit(q_add,right,target,target2);
+                    return target2;
                 } else {
                     if (isIntegral(node->t->value)) {
                         emit(q_add,left,right,target);
@@ -90,16 +119,16 @@ astnode* gen_rval(astnode* node, astnode* target) {
                 }
                 break;
             case '-':
-                if (isPtrOrArr(node->binop->left)) {
-                    emit(q_mul,right,astIntegral(typeSize(node->binop->left->t->value)),target);
-                    target = astTemporary();
-                    emit(q_sub,left,right,target);
-                    return target;
-                } else if (isPtrOrArr(node->binop->left)) {
-                    emit(q_mul,left,astIntegral(typeSize(node->binop->left->t->value)),target);
-                    target = astTemporary();
-                    emit(q_sub,right,left,target);
-                    return target;
+                if (isPtrOrArr(node->binop->left->t->value)) {
+                    emit(q_mul,right,(astnode*)astIntegral(typeSize(node->binop->left->t->next)),target);
+                    astnode* target2 = astTemporary();
+                    emit(q_sub,left,target,target2);
+                    return target2;
+                } else if (isPtrOrArr(node->binop->left->t->value)) {
+                    emit(q_mul,left,(astnode*)astIntegral(typeSize(node->binop->left->t->next)),target);
+                    astnode* target2 = astTemporary();
+                    emit(q_sub,right,target,target2);
+                    return target2;
                 } else {
                     if (isIntegral(node->t->value)) {
                         emit(q_sub,left,right,target);
@@ -174,6 +203,7 @@ astnode* gen_rval(astnode* node, astnode* target) {
                 return target;
                 break;
         }
+        
         return target;
     } else if (node->nodetype == AST_UNARY) {
         if (node->uop->op == CAST) {
@@ -203,6 +233,9 @@ astnode* gen_rval(astnode* node, astnode* target) {
             emit(q_add,n,l,target);
             return target;
         } else if (node->uop->op == '*') {
+            if (node->uop->right->t->next->value->nodetype == AST_ARRAY) {
+                return gen_rval(node->uop->right,0);
+            }
             if (!target) target = astTemporary();
             astnode* l = gen_rval(node->uop->right,0);
             emit(q_load,l,0,target);
@@ -225,14 +258,28 @@ astnode* gen_rval(astnode* node, astnode* target) {
         } else if (node->uop->op == '!') {
             if (!target) target = astTemporary();
             astnode* l = gen_rval(node->uop->right,0);
-            emit(q_eq,l,astIntegral(0),target);
+            emit(q_cmp,l,astIntegral(0),target);
             return target;
         }
-    } else if (node->nodetype == AST_FUNC) {
+    } else if (node->nodetype == AST_CALL) {
         if (!target) target = astTemporary();
-        astnode* l = gen_rval(node->uop->right,0);
-        emit(q_call,node->func->)
+        astnode* l = gen_rval(node->call->func,0);
+        astnode_listnode* p = node->call->params->list->head;
+        emit(q_stackinit,astIntegral(node->call->params->list->len),0,0);
+        while (p) {
+            astnode *t = gen_rval(p->value,0);
+            emit(q_storestack,t,0,0);
+            p = p->next;
+        }
+        emit(q_call,l,0,target);
         return target;
+    }
+}
+
+astnode* gen_ret(astnode* node) {
+    if(node->uop->right) {
+        astnode* val = gen_rval(node->uop->right->list->head->value,0);
+        emit(q_rt,val,0,0);
     }
 }
 
@@ -266,11 +313,168 @@ astnode* gen_lval(astnode* node, astnode* target) {
             emit(q_not,l,0,target);
             return target;
         }
+    } else if (node->nodetype == AST_IDENT) {
+        return node;
+    } else if (node->nodetype == AST_NUM) {
+        return 0;
     }
 }
 
-void emit(int op, astnode* src1, astnode* src2, astnode* dest) {
+astnode* gen_assign(astnode* node) {
+    if (node->nodetype == AST_BINARY) {
+        astnode* l = gen_lval(node->binop->left,0);
+        astnode* r = gen_rval(node->binop->right,0);
+        emit(q_store,r,0,l);
+        return l;
+    } else return gen_rval(node,0);
+}
 
+void gen_expr(astnode* node) {
+    if (node->nodetype == AST_LIST) {
+        astnode_listnode* n = node->list->head;
+        while(n) {
+            gen_assign(n->value);
+            n = n->next;
+        }
+    } else return gen_rval(node,0);
+}
+
+void emit(qq op, astnode* src1, astnode* src2, astnode* dest) {
+    quads* q = &curBlock()->q;
+    if (q->cap == 0) {
+        q->quads = (quad*)malloc(sizeof(quad)*4096);
+        q->cap = 4096;
+    } else if (q->len == q->cap) {
+        q->quads = realloc(q->quads,sizeof(quad)*(q->cap*2));
+        q->cap *= 2;
+    }
+    quad* i = &q->quads[q->len];
+    i->opcode = op;
+    i->src1 = src1;
+    i->src2 = src2;
+    i->dest = dest;
+    q->len++;
+}
+
+void printBlocks() {
+    int i = 0;
+    for(;i<blocks.len;i++) {
+        printf(".BB%d\n\n",i);
+        printQuads(blocks.blocks[i].q);
+    }
+}
+
+void printQuads(quads q) {
+    int j=0;
+    for(;j<q.len;j++){
+        quad* i = &(q.quads[(int)j]);
+        switch(i->opcode) {
+            case q_add:
+                printf("q_add ");
+                break;
+            case q_addf:
+                printf("q_addf ");
+                break;
+            case q_and:
+                printf("q_and ");
+                break;
+            case q_call:
+                printf("q_call ");
+                break;
+            case q_div:
+                printf("q_div ");
+                break;
+            case q_divf:
+                printf("q_divf ");
+                break;
+            case q_eq:
+                printf("q_eq ");
+                break;
+            case q_ftoi:
+                printf("q_ftoi ");
+                break;
+            case q_ge:
+                printf("q_ge ");
+                break;
+            case q_itof:
+                printf("q_itof ");
+                break;
+            case q_gt:
+                printf("q_gt ");
+                break;
+            case q_le:
+                printf("q_le ");
+                break;
+            case q_lea:
+                printf("q_lea ");
+                break;
+            case q_load:
+                printf("q_load ");
+                break;
+            case q_lsh:
+                printf("q_lsh ");
+                break;
+            case q_lt:
+                printf("q_lt ");
+                break;
+            case q_mod:
+                printf("q_mod ");
+                break;
+            case q_mov:
+                printf("q_mov ");
+                break;
+            case q_mul:
+                printf("q_mul ");
+                break;
+            case q_mulf:
+                printf("q_mulf ");
+                break;
+            case q_ne:
+                printf("q_ne ");
+                break;
+            case q_not:
+                printf("q_not ");
+                break;
+            case q_or:
+                printf("q_or ");
+                break;
+            case q_rsh:
+                printf("q_rsh ");
+                break;
+            case q_store:
+                printf("q_store ");
+                break;
+            case q_sub:
+                printf("q_sub ");
+                break;
+            case q_subf:
+                printf("q_subf");
+                break;
+            case q_storestack:
+                printf("q_storestack ");
+                break;
+            case q_stackinit:
+                printf("q_stackinit ");
+                break;
+            case q_xor:
+                printf("q_xor ");
+                break;
+            case q_cmp:
+                printf("q_cmp ");
+                break;
+            case q_rt:
+                printf("q_rt ");
+                break;
+            default:
+                printf("unknown op ");
+                break;
+        }
+        printf("\n");
+        printast(i->src1,0);
+        printast(i->src2,0);
+        printast(i->dest,0);
+
+    }
 }
 
 int typeSize(astnode_listnode* node) {
@@ -328,58 +532,3 @@ int typeSize(astnode_listnode* node) {
     return -1;
 }
 
-
-
-val generate(symtab* root_tbl, astnode* root_node, int b, int r, int s) {
-    symtab* cur_tbl = root_tbl;
-    astnode* cur_node = root_node;
-    int block = b;
-    int row = r;
-    val v;
-    v.type=0;
-    symrec* rec;
-    astnode_listnode* h;
-    switch(cur_node->nodetype) {
-        case AST_FUNCDEF:
-            b++;
-            findsym(cur_tbl,cur_node->funcdef->ident->ident->name,NAMESPACE_OTHERS)->key = b;
-            generate(cur_tbl,cur_node->funcdef->stmt,b,r,s);
-        break;
-        case AST_IDENT:
-            rec = findsym(cur_tbl,cur_node->funcdef->ident->ident->name,NAMESPACE_OTHERS);
-            v.symnum = rec->key;
-            v.type = rec->type->head;
-            v.typesize = typeSize(v.type);
-            return v;
-        break;
-        case AST_DECL:
-            rec = findsym(cur_tbl,cur_node->decl->ident->ident->name,NAMESPACE_OTHERS);
-            rec->key = s;
-            s++;
-            v.symnum = rec->key;
-            v.type = rec->type->head;
-            v.typesize = typeSize(v.type);
-        case AST_NUM:
-        v.symnum = 0;
-        if (cur_node->num->type == _real) {v.dnum = (double)cur_node->num->f;}
-        else v.num = cur_node->num->i | cur_node->num->u;
-        break;
-        case AST_BINARY:
-            val lval = generate(cur_tbl,cur_node->binop->left,b,r,s);
-            val rval = generate(cur_tbl,cur_node->binop->right,b,r,s);
-            switch (cur_node->binop->op) {
-                case '+':
-                    quads[b][r][0] = q_add;
-                    quads[b][r][1] = rval.type && rval.type->value->nodetype == AST_PTR ? lval.num * 8 : lval.num;
-                    quads[b][r][2] = lval.type && lval.type->value->nodetype == AST_PTR ? rval.symnum + rval.offset : rval.num;
-                    quads[b][r][3] = s;
-                    s++;
-                break;
-                case '=':
-                    quads[b][r][0] = q_add;
-                    quads[b][r][1] = rval.
-            }
-        break;
-    }
-    return v;
-}

@@ -4,15 +4,20 @@
 #include "ast.h"
 #include "helpers.h"
 #include "symtab.h"
+#include "quad.h"
 #include <string.h>
 struct astnode *root;
 symtab *symtab_file;
 symtab *symtab_cur;
 ERROR ** errors;
 int errnum;
+int funcsym=0;
+symtab* prototype;
 extern int yylex();
 extern int yyerror();
 extern int yylineno;
+extern quads q;
+extern blockss blocks;
 %}
 %define parse.error verbose
 %union{
@@ -113,15 +118,15 @@ program: translation_unit {root = $$;}
 pexp: ID {$$=astIdent($1.c);
 symrec* rec = findsym(symtab_cur,$1.c,NAMESPACE_OTHERS);
 if (!rec) {errors[errnum] = getError(yylineno,"primary expression not found"); errnum++;}
-else {$$->t = rec->type->head;}
+else {$$->t = rec->type->head->next; $$->tbl = symtab_cur;}
 }
  | constant
  | STR {$$=astString($1.c);}
  | '(' exp ')' {$$=$2;}
 ;
 
-number: NUM {$$=astNum($1.type == 0 ? _unsigned : _integer,(void *)&$1);}
- | NUMF {$$=astNum(_real,(void *)&$1);}
+number: NUM {$$=astNum($1.type == 0 ? _unsigned : _integer,$1.type == 0 ? (void *)&$1.u : (void *)&$1.i);}
+ | NUMF {$$=astNum(_real,(void *)&$1.f);}
 ;
 
 constant: number
@@ -129,7 +134,7 @@ constant: number
 ; 
 
 postexp: pexp
- | postexp '[' exp ']' {$$ = astUnary('*',astBinary($1,$3,'+'));}
+ | postexp '[' exp ']' {$$ = astUnary('*',astBinary($1,$3->list->head->value,'+'));}
  | postexp '(' ')' {$$ = astCall($1,NULL);}
  | postexp '(' exp ')' {$$ = astCall($1,$3);}
  | postexp '.' ID {$$ = astBinary($1,astIdent($3.c),'.');}
@@ -359,7 +364,7 @@ direct_declarator
 	| direct_declarator '[' type_qualifier_list STATIC aexp ']'
 	| direct_declarator '[' type_qualifier_list '*' ']'
 	| direct_declarator '[' '*' ']'
-	| direct_declarator '(' parameter_type_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($3));}
+	| direct_declarator '(' {prototype = createTable(symtab_cur,yylineno,SCOPE_BLOCK); symtab_cur = prototype;} parameter_type_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($4)); symtab_cur = symtab_cur->parent;}
 	| direct_declarator '(' identifier_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($3));}
 	| direct_declarator '(' ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc(NULL));}
 	;
@@ -388,7 +393,7 @@ parameter_list
 	;
 
 parameter_declaration
-	: declspec declr {$$=$2; insertAstListTail($2->decl->type,$1);}
+	: declspec declr {$$=$2; insertAstListTail($2->decl->type,$1); insertDecl(symtab_cur,$2,yylineno);}
 	| declspec abstract_declarator {$$=$2; insertAstListTail($2->decl->type,$1);}
 	| declspec {$$=astList($1);}
 	;
@@ -452,8 +457,8 @@ designator
 stmt
 	: labelstmt
 	| compoundstmt
-	| exps
-	| selects
+	| exps {gen_expr($1);}
+	| selects {gen_if($1);}
 	| iters
 	| jmps
 	;
@@ -470,7 +475,12 @@ exps: ';' {$$ = NULL;}
 
 compoundstmt
  : '{' '}' {$$=astBlockList(NULL);}
- | '{' {symtab_cur = createTable(symtab_cur,yylineno,SCOPE_BLOCK);} block_item_list '}' {$$=$3; $<astnode>$->tbl = symtab_cur; symtab_cur = symtab_cur->parent;}
+ | '{' {
+	if (funcsym == 0)
+ 		symtab_cur = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
+	else
+		symtab_cur = prototype;
+	} block_item_list '}' {$$=$3; $<astnode>$->tbl = symtab_cur; symtab_cur = symtab_cur->parent;}
  ;
 
 block_item_list
@@ -485,7 +495,7 @@ block_item
 
 
 selects
-	: IF '(' exp ')' stmt {$$=astCond($3,$5,NULL);}
+	: IF '(' exp ')' stmt {$$=astCond($3,$5,NULL); }
 	| IF '(' exp ')' stmt ELSE stmt {$$=astCond($3,$5,$7);}
 	| SWITCH '(' exp ')' stmt {$$=astBinary($3,$5,SWITCH);}
 	;
@@ -503,8 +513,8 @@ jmps
 	: GOTO ID ';' {$$=astUnary(GOTO,astIdent($2.c));}
 	| CONTINUE ';' {$$=astUnary(CONTINUE,NULL);}
 	| BREAK ';' {$$=astUnary(BREAK,NULL);}
-	| RETURN ';' {$$=astUnary(RETURN,NULL);}
-	| RETURN exp ';' {$$=astUnary(RETURN,$2);}
+	| RETURN ';' {$$=astUnary(RETURN,NULL); gen_ret($$);}
+	| RETURN exp ';' {$$=astUnary(RETURN,$2); gen_ret($$);}
 	;
 
 translation_unit
@@ -513,13 +523,18 @@ translation_unit
 	;
 
 external_declaration
-	: funcdef {$$=astList($1);}
+	: funcdef {$$=astList($1); newBlock(NULL);}
 	| decl
 	;
 
 funcdef
 	: declspec declr declaration_list compoundstmt {$$=astFuncDef($2,$2->decl->ident,$4); insertFuncDef(symtab_cur,$$,yylineno);}
-	| declspec declr compoundstmt {$$=astFuncDef($2->decl->type,$2->decl->ident,$3); bindDeclDef($1,$$); free($2->decl); insertFuncDef(symtab_cur,$$,yylineno);}
+	| declspec declr {funcsym=1;
+	$<astnode>$=astFuncDef($2,$2->decl->ident,0);
+	bindDeclDef($1,$<astnode>$);
+	//free($2->decl);
+	insertFuncDef(symtab_cur,$<astnode>$,yylineno);
+	} compoundstmt {funcsym=0; $<astnode>3->funcdef->stmt = $4;}
 	| declr declaration_list compoundstmt {insertAstListTail($1->decl->type,astTypeSpec(astToken(INT))); $$=astFuncDef($1,$1->decl->ident,$3);}
 	| declr compoundstmt {insertAstListTail($1->decl->type,astTypeSpec(astToken(INT))); $$=astFuncDef($1,$1->decl->ident,$2);}
 	;
@@ -553,9 +568,13 @@ main(int argc, char **argv)
 	symtab_cur = symtab_file;
 	errors = (ERROR**) malloc(sizeof(ERROR*)*1024);
 	errnum=0;
-    yyparse();
+	getBlocks();
+     newBlock(NULL);
+	yyparse();
 	printErrors(errors,errnum);
     printast(root,0);
+	
+	printBlocks();
 }
 
 int yyerror(char *s)

@@ -8,51 +8,6 @@ extern ERROR ** errors;
 extern int errnum;
 extern yylineno;
 
-int typeSize(astnode_listnode* node) {
-    int i = 1;
-    astnode* type = node->value;
-    astnode_listnode* h;
-    if (!type) return i;
-    switch(type->nodetype) {
-        case AST_PTR:
-            return 8;
-        case AST_ARRAY:
-            return type->array->size->num->i * typeSize(node->next);
-        case AST_TYPE:
-            switch(type->type->scalar){
-                case SCALAR_CHAR:
-                    return 1;
-                    break;
-                case SCALAR_SHORT:
-                case SCALAR_SHORTINT:
-                case SCALAR_INT:
-                case SCALAR_LONG:
-                case SCALAR_LONGINT:
-                case SCALAR_FLOAT:
-                case SCALAR_NONE:
-                    return 4;
-                    break;
-                case SCALAR_LONGLONG:
-                case SCALAR_LONGLONGINT:
-                    return 8;
-                    break;
-                case SCALAR_LONGDOUBLE:
-                    return 10;
-                    break;
-                case SCALAR_OBJ:
-                    h = type->type->specifier->obj->members->list->head;
-                    i=0;
-                    while(h) {
-                        i += typeSize(h->value->member->decl->decl->type->list->head);
-                        h = h->next;
-                    }
-                    return i;
-                    break;
-            }
-    }
-    return -1;
-}
-
 struct astnode* newAst(int type) {
     struct astnode* ast = (struct astnode*)malloc(sizeof(astnode));
     ast->nodetype=type;
@@ -88,6 +43,9 @@ struct astnode* astFuncDef(struct astnode* a, struct astnode* b, struct astnode*
 
 struct astnode* astTemporary(struct astnode* a, struct astnode* b, struct astnode* c){
     struct astnode* mine = newAst(AST_TEMPORARY);
+    static int t;
+    mine->tempnum = t;
+    t++;
     return mine;
 }
 
@@ -119,7 +77,9 @@ struct astnode* astIntegral(int value) {
     struct astnode* mine = newAst(AST_NUM);
     mine->num = (struct astnode_num*)malloc(sizeof(astnode_num));
     mine->num->type = _integer;
+    mine->num->i = value;
     mine->t=newAstListNode();
+    mine->t->value=astTypeSpec(astToken(INT));
     addTypeSpec(mine->t->value,astToken(INT));
     return mine;
 }
@@ -133,7 +93,7 @@ struct astnode* astUnary(int left, struct astnode* right) {
     astnode_listnode* a;
     switch (left) {
         case '*':
-            if(!isPtrOrArr(right)) {
+            if(!isPtrOrArr(right->t->value)) {
                 errors[errnum] = getError(yylineno,"cannot dereference the type");
                 errnum++;
             } else {
@@ -297,6 +257,10 @@ struct astnode* astBinary(struct astnode* left, struct astnode* right, int op) {
         case GE:
         case NE:
         case EQ:
+        a->t = newAstListNode();
+        a->t->value = astTypeSpec(astToken(INT));
+        a->t->value->type->scalar = biggerScalar(left,right);
+        break;
         case '&':
         case '^':
         case '|':
@@ -376,6 +340,7 @@ struct astnode* astCall(struct astnode* func, struct astnode* params) {
     m->call = (struct astnode_call*)malloc(sizeof(astnode_call));
     m->call->func = func;
     m->call->params=params;
+    m->t=func->t->next;
     return m;
 
 }
@@ -486,31 +451,19 @@ void bindDeclSpec(struct astnode* declspec, struct astnode* decllist){
     struct astnode_listnode* a = decllist->list->head;
     while(a) {
         insertAstListTail(a->value->decl->type,declspec);
-        if (a->value->decl->type->list->head->value->nodetype == AST_IDENT) {
-            a->value->decl->type->list->head = a->value->decl->type->list->head->next;
-            a->value->decl->type->list->len -= 1;
-        }
         a = a->next;
     }
 }
 
 void bindDeclDef(struct astnode* declspec, struct astnode* decl){
-    struct astnode_listnode* a = decl->funcdef->type->list->head;
-    insertAstListTail(decl->funcdef->type,declspec);
-    if (a->value->nodetype == AST_IDENT) {
-        decl->funcdef->type->list->head = a->next;
-        decl->funcdef->type->list->len -= 1;
-    }
+    struct astnode_listnode* a = decl->funcdef->type->decl->type->list->head;
+    insertAstListTail(decl->funcdef->type->decl->type,declspec);
 }
 
 void bindDeclSpecStruct(struct astnode* declspec, struct astnode* decllist){
     struct astnode_listnode* a = decllist->list->head;
     while(a) {
         insertAstListTail(a->value->member->decl->decl->type,declspec);
-        if (a->value->member->decl->decl->type->list->head->value && a->value->member->decl->decl->type->list->head->value->nodetype == AST_IDENT) {
-            a->value->member->decl->decl->type->list->head = a->value->member->decl->decl->type->list->head->next;
-            a->value->member->decl->decl->type->list->len -= 1;
-        }
         a = a->next;
     }
 }
@@ -896,6 +849,9 @@ void printast(struct astnode* node,int depth) {
         printf("STRUCT/UNION/ENUM MEMBER\n");
         printast(node->member->bits,depth+1);
         printast(node->member->decl,depth+1);
+        break;
+        case AST_TEMPORARY:
+        printf("%%%d\n",node->tempnum);
         break;
         default:
         printf("unknown astnode encountered! nodetype: %d",node->nodetype);

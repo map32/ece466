@@ -119,6 +119,7 @@ typedef struct astnode {
     struct symtab* tbl;
     int size;
     struct astnode_listnode* t;
+    int tempnum;
 } astnode;
 
 enum numtype {
@@ -289,6 +290,7 @@ struct astnode* mergeLists(struct astnode* ,struct astnode* );
 struct astnode* astMember(struct astnode* ,struct astnode* );
 struct astnode* astBlockList(struct astnode*);
 struct astnode* astTemporary();
+struct astnode* astIntegral(int value);
 void insertAstIntList(struct astnode* left, int i);
 void insertAstList(struct astnode* left, struct astnode* right);
 void insertAstListTail(struct astnode*, struct astnode*);
