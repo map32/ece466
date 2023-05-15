@@ -1,6 +1,7 @@
 #ifndef __quads
 #define __quads
 #include "ast.h"
+#include "symtab.h"
 typedef enum qq {
     q_add,
     q_addq,
@@ -35,7 +36,8 @@ typedef enum qq {
     q_call,
     q_storestack,
     q_stackinit,
-    q_cmp
+    q_cmp,
+    q_br
 } qq;
 
 typedef struct quad {
@@ -73,6 +75,12 @@ typedef struct blockss {
 } blockss;
 
 void printQuads(quads i);
+block* newBlock(symrec*);
 astnode* gen_rval(astnode*,astnode*);
 void gen_condexpr(astnode* node,block* a, block* b);
+astnode* gen_assign(astnode* node);
+astnode* gen_if(astnode*);
+astnode* gen_ret(astnode*);
+astnode* gen_while(astnode*);
+int typeSize(astnode_listnode*);
 #endif

@@ -7,7 +7,8 @@ typedef enum SYM_TYPE {
     SYM_FUNC,
     SYM_TAG,
     SYM_MEMBER,
-    SYM_LABEL
+    SYM_LABEL,
+    SYM_PROTOVAR
 } SYM_TYPE;
 
 typedef enum NAMESPACE_TYPE {
@@ -47,4 +48,5 @@ typedef struct symtab {
 struct symtab* createTable(struct symtab* parent,int lineno,SCOPE_TYPE scope);
 struct symrec* insertDecls(struct symtab* table, struct astnode* data, int lineno);
 symrec *findsym(symtab*, char*, NAMESPACE_TYPE);
+void setPrototype(symtab*);
 #endif

@@ -588,8 +588,6 @@ int addTypeSpec(struct astnode* type, struct astnode* spec) {
         type->type->scalar = k;
         return 0;
     } else if (spec->nodetype == AST_TOKEN) {
-        printast(spec,0);
-        printast(type,0);
         if (type->type->sign == SIGN_NONE) type->type->sign = _convspec(spec->token);
         else return 6;
     } else {
@@ -716,6 +714,7 @@ void printast(struct astnode* node,int depth) {
     if (node->nodetype != AST_LIST && node->nodetype != AST_BLOCKLIST ) _pastdepth(depth);
     struct symrec* rec;
     astnode_listnode* n = node->t;
+    astnode_type* tt;
     switch(node->nodetype) {
         case AST_IDENT:
         printf("ID %s\n",node->ident->name);
@@ -831,8 +830,8 @@ void printast(struct astnode* node,int depth) {
         printast(node->obj->members,depth+1);
         break;
         case AST_TYPE:
-        astnode_type* t = node->type;
-        printf("%s %s %s %s\n",TEXT_STG[t->stg],TEXT_QUAL[t->qual],TEXT_SIGN[t->sign],TEXT_SCALAR[t->scalar]);
+        tt = node->type;
+        printf("%s %s %s %s\n",TEXT_STG[tt->stg],TEXT_QUAL[tt->qual],TEXT_SIGN[tt->sign],TEXT_SCALAR[tt->scalar]);
         printast(node->type->specifier,depth+1);
         break;
         case AST_FUNCDEF:

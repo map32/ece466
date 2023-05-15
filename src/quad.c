@@ -3,7 +3,7 @@
 #include "parsing.tab.h"
 #include "quad.h"
 #include "stdlib.h"
-quads q;
+block* curBlock;
 blockss blocks;
 int curblock;
 void getBlocks() {
@@ -15,37 +15,66 @@ void getBlocks() {
 block* newBlock(symrec* sym) {
     block* b = &blocks.blocks[blocks.len];
     b->id = blocks.len;
-    q = b->q;
     b->sym = sym;
     blocks.len++;
     return b;
 }
-block* curBlock() {
-    return &blocks.blocks[blocks.len-1];
+void setCurBlock(block* b) {
+    curBlock = b;
 }
 block* getBlock(int i) {
     return &blocks.blocks[i];
 }
 
 astnode* gen_stmt(astnode* node) {
-    if (node->nodetype == AST_BLOCKLIST) {
-        
+    if (node->nodetype == AST_BLOCKLIST || node->nodetype == AST_LIST) {
+        astnode_listnode* l = node->list->head;
+        while (l) {
+            gen_stmt(l->value);
+            l = l->next;
+        }
+    } else if (node->nodetype == AST_TERNARY) {
+        gen_if(node);
+    }else if (node->nodetype == AST_UNARY || node->nodetype == AST_BINARY || node->nodetype == AST_CALL) {
+        if (node->nodetype == AST_UNARY && node->uop->op == RETURN) {
+            gen_ret(node);
+        } else if (node->nodetype == AST_BINARY && node->binop->op == WHILE) {
+            gen_while(node);
+        }else gen_assign(node);
     }
 }
 
-astnode* gen_if(astnode* node) {
-    quads qq = q;
+astnode* gen_while(astnode* node) {
     block* a = newBlock(0);
     block* b = newBlock(0);
-    q = qq;
-    gen_condexpr(node->ternop->cond,a,b);
-    q = a->q;
-    gen_expr(node->ternop->left);
+    block* c = newBlock(0);
+    block* d = curBlock;
+    emit(q_br,0,0,astIntegral(a->id));
+    curBlock = a;
+    gen_condexpr(node->binop->left,b,c);
+    curBlock = b;
+    gen_stmt(node->binop->right);
+    emit(q_br,0,0,astIntegral(a->id));
+    curBlock = c;
+
+}
+
+astnode* gen_if(astnode* node) {
+    quads qq;
+    block* ccc = curBlock;
+    block* aa = newBlock(0);
+    block* bb = newBlock(0);
+    block* cc;
+    gen_condexpr(node->ternop->cond,aa,bb);
+    curBlock = aa;
+    gen_stmt(node->ternop->left);
     if (node->ternop->right) {
-        block* c = newBlock(0);
-        gen_expr(node->ternop->right);
+        cc = newBlock(0);
+        curBlock = bb;
+        gen_stmt(node->ternop->right);
     }
-    q = b->q;
+    emit(q_br,0,0,node->ternop->right ? astIntegral(cc->id) : astIntegral(bb->id));
+    curBlock = node->ternop->right ? cc : bb;
 }
 void gen_condexpr(astnode* node,block* a, block* b) {
     if (node->nodetype == AST_LIST) {
@@ -267,12 +296,19 @@ astnode* gen_rval(astnode* node, astnode* target) {
         astnode_listnode* p = node->call->params->list->head;
         emit(q_stackinit,astIntegral(node->call->params->list->len),0,0);
         while (p) {
-            astnode *t = gen_rval(p->value,0);
+            astnode_listnode* temp = p;
+            while(temp->next) {
+                temp = temp->next;
+            }
+            astnode *t = gen_rval(temp->value,0);
             emit(q_storestack,t,0,0);
             p = p->next;
         }
         emit(q_call,l,0,target);
         return target;
+    } else if (node->nodetype == AST_LIST) {
+        astnode* l = node->list->head->value;
+        return gen_rval(l,0);
     }
 }
 
@@ -283,7 +319,7 @@ astnode* gen_ret(astnode* node) {
     }
 }
 
-astnode* gen_lval(astnode* node, astnode* target) {
+astnode* gen_lval(astnode* node, astnode* target, int* indirect) {
     if (node->nodetype == AST_UNARY) {
         if (node->uop->op == POSTINC || node->uop->op == PREINC) {
             astnode* n = astIntegral(1);
@@ -300,6 +336,7 @@ astnode* gen_lval(astnode* node, astnode* target) {
         } else if (node->uop->op == '*') {
             if (!target) target = astTemporary();
             astnode* l = gen_rval(node->uop->right,0);
+            *indirect = 1;
             emit(q_load,l,0,target);
             return target;
         } else if (node->uop->op == '&') {
@@ -322,9 +359,14 @@ astnode* gen_lval(astnode* node, astnode* target) {
 
 astnode* gen_assign(astnode* node) {
     if (node->nodetype == AST_BINARY) {
-        astnode* l = gen_lval(node->binop->left,0);
+        int indirect = 0;
         astnode* r = gen_rval(node->binop->right,0);
-        emit(q_store,r,0,l);
+        astnode* l = gen_lval(node->binop->left,0,&indirect);
+        if (indirect) {
+            emit(q_store,r,0,l);
+        } else {
+            emit(q_mov,r,0,l);
+        }
         return l;
     } else return gen_rval(node,0);
 }
@@ -340,7 +382,7 @@ void gen_expr(astnode* node) {
 }
 
 void emit(qq op, astnode* src1, astnode* src2, astnode* dest) {
-    quads* q = &curBlock()->q;
+    quads* q = &((*curBlock).q);
     if (q->cap == 0) {
         q->quads = (quad*)malloc(sizeof(quad)*4096);
         q->cap = 4096;
@@ -465,15 +507,36 @@ void printQuads(quads q) {
             case q_rt:
                 printf("q_rt ");
                 break;
+            case q_br:
+                printf("q_br ");
+                break;
             default:
                 printf("unknown op ");
                 break;
         }
+        printast_quad(i->src1);
+        printast_quad(i->src2);
+        printast_quad(i->dest);
         printf("\n");
-        printast(i->src1,0);
-        printast(i->src2,0);
-        printast(i->dest,0);
 
+    }
+}
+
+void printast_quad(astnode* a) {
+    if (!a) return;
+    switch(a->nodetype) {
+        case AST_NUM:
+            printf("%d ",a->num->i);
+            break;
+        case AST_TEMPORARY:
+            printf("%%%d ",a->tempnum);
+            break;
+        case AST_IDENT:
+            printf("%s ",a->ident->name);
+            break;
+        default:
+            printf("unknown ast type in quad ");
+            
     }
 }
 

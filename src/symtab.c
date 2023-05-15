@@ -106,6 +106,15 @@ struct symrec* insertDecl(struct symtab* table, struct astnode* data, int lineno
     return table->row + ind;
 }
 
+void setPrototype(struct symtab* table){
+    int a = table->rownum;
+    int i=0;
+    for(;i<a;i++){
+        symrec* rec = &table->row[i];
+        rec->symtype = SYM_PROTOVAR;
+    }
+}
+
 void setSymComplete(struct symtab* table, struct astnode* a) {
     char* c;
     struct astnode_list* t;

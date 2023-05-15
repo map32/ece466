@@ -1,5 +1,13 @@
 	.file	"test2.c"
 	.text
+	.globl	globe
+	.bss
+	.align 4
+	.type	globe, @object
+	.size	globe, 4
+globe:
+	.zero	4
+	.text
 	.globl	main
 	.type	main, @function
 main:
@@ -10,52 +18,59 @@ main:
 	.cfi_offset 6, -16
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register 6
-	movl	$5, %edi
+	subq	$48, %rsp
+	movl	%edi, -36(%rbp)
+	movq	%fs:40, %rax
+	movq	%rax, -8(%rbp)
+	xorl	%eax, %eax
+	movl	$300, globe(%rip)
+	movl	$100, external(%rip)
+	movl	$4, -36(%rbp)
+	movl	globe(%rip), %eax
+	addl	$5, %eax
+	movl	%eax, -20(%rbp)
+	movl	-20(%rbp), %eax
+	cltq
+	movq	%rax, -16(%rbp)
+	leaq	-20(%rbp), %rax
+	movl	%eax, %edx
+	movq	-16(%rbp), %rax
+	movl	%edx, (%rax)
+	leaq	globe(%rip), %rax
+	movq	%rax, -16(%rbp)
+	movq	-16(%rbp), %rax
+	movl	%eax, globe(%rip)
+	movq	-16(%rbp), %rax
+	movl	(%rax), %eax
+	cltq
+	movq	%rax, -16(%rbp)
+	movl	-20(%rbp), %edx
+	movl	%edx, %eax
+	addl	%eax, %eax
+	addl	%edx, %eax
+	movl	%eax, -20(%rbp)
+	movl	$0, -20(%rbp)
+	movl	$3, -20(%rbp)
+	movl	-20(%rbp), %eax
+	andl	$5, %eax
+	movl	%eax, -20(%rbp)
+	movl	-20(%rbp), %eax
+	xorl	$5, %eax
+	movl	%eax, -20(%rbp)
+	movl	-20(%rbp), %eax
+	orl	$5, %eax
+	movl	%eax, -20(%rbp)
 	movl	$0, %eax
-	call	fib
-	movl	$0, %eax
-	popq	%rbp
+	movq	-8(%rbp), %rdx
+	subq	%fs:40, %rdx
+	je	.L3
+	call	__stack_chk_fail@PLT
+.L3:
+	leave
 	.cfi_def_cfa 7, 8
 	ret
 	.cfi_endproc
 .LFE0:
 	.size	main, .-main
-	.globl	fib
-	.type	fib, @function
-fib:
-.LFB1:
-	.cfi_startproc
-	pushq	%rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset 6, -16
-	movq	%rsp, %rbp
-	.cfi_def_cfa_register 6
-	pushq	%rbx
-	subq	$24, %rsp
-	.cfi_offset 3, -24
-	movl	%edi, -20(%rbp)
-	cmpl	$1, -20(%rbp)
-	jg	.L4
-	movl	$1, %eax
-	jmp	.L5
-.L4:
-	movl	-20(%rbp), %eax
-	subl	$1, %eax
-	movl	%eax, %edi
-	call	fib
-	movl	%eax, %ebx
-	movl	-20(%rbp), %eax
-	subl	$2, %eax
-	movl	%eax, %edi
-	call	fib
-	addl	%ebx, %eax
-.L5:
-	movq	-8(%rbp), %rbx
-	leave
-	.cfi_def_cfa 7, 8
-	ret
-	.cfi_endproc
-.LFE1:
-	.size	fib, .-fib
-	.ident	"GCC: (Alpine 12.2.1_git20220924-r4) 12.2.1 20220924"
+	.ident	"GCC: (Alpine 12.2.1_git20220924-r10) 12.2.1 20220924"
 	.section	.note.GNU-stack,"",@progbits

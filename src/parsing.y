@@ -6,18 +6,21 @@
 #include "symtab.h"
 #include "quad.h"
 #include <string.h>
+#include <signal.h>
 struct astnode *root;
 symtab *symtab_file;
 symtab *symtab_cur;
 ERROR ** errors;
+FILE *f;
 int errnum;
 int funcsym=0;
 symtab* prototype;
 extern int yylex();
 extern int yyerror();
 extern int yylineno;
-extern quads q;
 extern blockss blocks;
+extern block* curBlock;
+
 %}
 %define parse.error verbose
 %union{
@@ -366,7 +369,7 @@ direct_declarator
 	| direct_declarator '[' '*' ']'
 	| direct_declarator '(' {prototype = createTable(symtab_cur,yylineno,SCOPE_BLOCK); symtab_cur = prototype;} parameter_type_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($4)); symtab_cur = symtab_cur->parent;}
 	| direct_declarator '(' identifier_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($3));}
-	| direct_declarator '(' ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc(NULL));}
+	| direct_declarator '(' {prototype = createTable(symtab_cur,yylineno,SCOPE_BLOCK); symtab_cur = prototype;} ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc(NULL)); symtab_cur = symtab_cur->parent;}
 	;
 
 pointer
@@ -457,8 +460,8 @@ designator
 stmt
 	: labelstmt
 	| compoundstmt
-	| exps {gen_expr($1);}
-	| selects {gen_if($1);}
+	| exps
+	| selects
 	| iters
 	| jmps
 	;
@@ -478,8 +481,11 @@ compoundstmt
  | '{' {
 	if (funcsym == 0)
  		symtab_cur = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-	else
+	else {
 		symtab_cur = prototype;
+		setPrototype(symtab_cur);
+		funcsym = 0;
+	}
 	} block_item_list '}' {$$=$3; $<astnode>$->tbl = symtab_cur; symtab_cur = symtab_cur->parent;}
  ;
 
@@ -513,8 +519,8 @@ jmps
 	: GOTO ID ';' {$$=astUnary(GOTO,astIdent($2.c));}
 	| CONTINUE ';' {$$=astUnary(CONTINUE,NULL);}
 	| BREAK ';' {$$=astUnary(BREAK,NULL);}
-	| RETURN ';' {$$=astUnary(RETURN,NULL); gen_ret($$);}
-	| RETURN exp ';' {$$=astUnary(RETURN,$2); gen_ret($$);}
+	| RETURN ';' {$$=astUnary(RETURN,NULL);}
+	| RETURN exp ';' {$$=astUnary(RETURN,$2);}
 	;
 
 translation_unit
@@ -523,7 +529,7 @@ translation_unit
 	;
 
 external_declaration
-	: funcdef {$$=astList($1); newBlock(NULL);}
+	: funcdef {$$=astList($1); setCurBlock(blocks.blocks[0]);}
 	| decl
 	;
 
@@ -532,9 +538,13 @@ funcdef
 	| declspec declr {funcsym=1;
 	$<astnode>$=astFuncDef($2,$2->decl->ident,0);
 	bindDeclDef($1,$<astnode>$);
+	
 	//free($2->decl);
 	insertFuncDef(symtab_cur,$<astnode>$,yylineno);
-	} compoundstmt {funcsym=0; $<astnode>3->funcdef->stmt = $4;}
+	symrec* rec = findsym(symtab_cur,$2->decl->ident->ident->name,NAMESPACE_OTHERS);
+	curBlock = newBlock(rec);
+	rec->key = curBlock->id;
+	} compoundstmt {funcsym=0; $<astnode>3->funcdef->stmt = $4; $$ = $<astnode>3; gen_stmt($4);}
 	| declr declaration_list compoundstmt {insertAstListTail($1->decl->type,astTypeSpec(astToken(INT))); $$=astFuncDef($1,$1->decl->ident,$3);}
 	| declr compoundstmt {insertAstListTail($1->decl->type,astTypeSpec(astToken(INT))); $$=astFuncDef($1,$1->decl->ident,$2);}
 	;
@@ -545,6 +555,12 @@ declaration_list
 	;
 
 %%
+void segfault_sigaction(int signal, siginfo_t *si, void *arg)
+{
+    fclose(f);
+    printf("Caught segfault at address %p\n", si->si_addr);
+    exit(0);
+}
 main(int argc, char **argv)
 {
   extern FILE *yyin, *yyout;
@@ -552,6 +568,14 @@ main(int argc, char **argv)
         fprintf(stderr,"not enough arguments");
         return 1;
     }
+	struct sigaction sa;
+
+    memset(&sa, 0, sizeof(struct sigaction));
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = segfault_sigaction;
+    sa.sa_flags   = SA_SIGINFO;
+
+    sigaction(SIGSEGV, &sa, NULL);
  
     /* yyin points to the file input.txt
     and opens it in read mode*/
@@ -569,12 +593,15 @@ main(int argc, char **argv)
 	errors = (ERROR**) malloc(sizeof(ERROR*)*1024);
 	errnum=0;
 	getBlocks();
-     newBlock(NULL);
+    setCurBlock(newBlock(NULL));
 	yyparse();
 	printErrors(errors,errnum);
     printast(root,0);
 	
 	printBlocks();
+	char buf[1024];
+	sprintf(buf,"%s.s",argv[1]);
+	generate(buf);
 }
 
 int yyerror(char *s)
