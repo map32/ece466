@@ -137,7 +137,8 @@ struct astnode* astString(char* str) {
     mine->string = str;
     mine->t=newAstListNode();
     mine->t->value=astPtr(QUAL_NONE);
-    mine->t->next=astTypeSpec(astToken(CHAR));
+    mine->t->next=newAstListNode();
+    mine->t->next->value=astTypeSpec(astToken(CHAR));
     return mine;
 }
 struct astnode* astIdent(char* id) {
@@ -340,6 +341,12 @@ struct astnode* astCall(struct astnode* func, struct astnode* params) {
     m->call = (struct astnode_call*)malloc(sizeof(astnode_call));
     m->call->func = func;
     m->call->params=params;
+    if (!func->t) {
+        func->t = newAstListNode();
+        func->t->value=astFunc(NULL);
+        func->t->next = newAstListNode();
+        func->t->next->value = astTypeSpec(astToken(INT));
+    }
     m->t=func->t->next;
     return m;
 

@@ -132,7 +132,7 @@ void generate(char* filename) {
         if (funcc) {
             fprintf(f,"pushq %%rbp\n");
             fprintf(f,"movq %%rsp, %%rbp\n");
-            fprintf(f,"subq %%%d, %%rsp\n",b->sym->func->localtotal * 4);
+            fprintf(f,"subq %%%d, %%rsp\n",b->sym->func->localtotal * 8);
             funcc = 0;
         }
         int j=0;
@@ -175,7 +175,7 @@ void generate(char* filename) {
                     else c = getStoredRegister(allocator,q.src1->tempnum);
                     if (bb != 2) d = getNewRegister(allocator,-3);
                     if (bb==1) fprintf(f,"movq %d(%%rbp), %%%s\n",b,d);
-                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i);
+                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i,d);
                     else if (bb==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src2->ident->name,d);
                     else d = getStoredRegister(allocator,q.src2->tempnum);
                     fprintf(f,"addq %%%s, %%%s\n",c,d);
@@ -196,7 +196,7 @@ void generate(char* filename) {
                     else c = getStoredRegister(allocator,q.src1->tempnum);
                     if (bb != 2) d = getNewRegister(allocator,-3);
                     if (bb==1) fprintf(f,"movq %d(%%rbp), %%%s\n",b,d);
-                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i);
+                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i,d);
                     else if (bb==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src2->ident->name,d);
                     else d = getStoredRegister(allocator,q.src2->tempnum);
                     fprintf(f,"subq %%%s, %%%s\n",c,d);
@@ -225,7 +225,7 @@ void generate(char* filename) {
                     else if (aa==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src1->ident->name,c);
                     if (bb != 2) d = getNewRegister(allocator,-3);
                     if (bb==1) fprintf(f,"movq %d(%%rbp), %%%s\n",b,d);
-                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i);
+                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i,d);
                     else if (bb==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src2->ident->name,d);
                     else d = getStoredRegister(allocator,q.src2->tempnum);
                     fprintf(f,"mulq %%%s\n",c);
@@ -254,7 +254,7 @@ void generate(char* filename) {
                     else if (aa==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src1->ident->name,c);
                     if (bb != 2) d = getNewRegister(allocator,-3);
                     if (bb==1) fprintf(f,"movq %d(%%rbp), %%%s\n",b,d);
-                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i);
+                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i,d);
                     else if (bb==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src2->ident->name,d);
                     else d = getStoredRegister(allocator,q.src2->tempnum);
                     fprintf(f,"divq %%%s\n",c);
@@ -398,11 +398,11 @@ void generate(char* filename) {
                     else fprintf(f,"call %s@PLT\n",q.src1->ident->name);   
                     allocator[2] = allocator[1];
                     allocator[1] = allocator[0];
-                    if (aa==1) {
+                    if (cc==1) {
                         fprintf(f,"movq %%rax %d(%%rbp)\n",a);
-                    } else if (aa==2) {
+                    } else if (cc==2) {
                         allocator[0] = q.dest->tempnum;
-                    } else if (aa==3) {
+                    } else if (cc==3) {
                         fprintf(f,"movq %%rax %s(%%rip)\n",q.dest->ident->name);
                     }
                     fprintf(f,"movq %%r12 %%r10\n");
@@ -411,7 +411,7 @@ void generate(char* filename) {
                 break;
                 case q_rt:
                     if (aa==0) {
-                        fprintf(f,"movl $%d]n",q.src1->num->i);
+                        fprintf(f,"movl $%d\n",q.src1->num->i);
                     } else if (aa==2) {
                         fprintf(f,"movq %%%%s %%rax\n",getStoredRegister(allocator,q.src1->tempnum));
                     } else if (aa=1) {
@@ -430,7 +430,7 @@ void generate(char* filename) {
                     else c = getStoredRegister(allocator,q.src1->tempnum);
                     if (bb != 2) d = getNewRegister(allocator,-3);
                     if (bb==1) fprintf(f,"movq %d(%%rbp), %%%s\n",b,d);
-                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i);
+                    else if (bb==0) fprintf(f,"movq $%d, %%%s\n",q.src2->num->i,d);
                     else if (bb==3) fprintf(f,"movq %s(%%rip), %%%s\n",q.src2->ident->name,d);
                     else d = getStoredRegister(allocator,q.src2->tempnum);
                     fprintf(f,"cmp %%%s, %%%s\n",c,d);
@@ -509,9 +509,9 @@ int rbpOffset(astnode* ident) {
         symrec* rec = findsym(tbl,ident->ident->name,NAMESPACE_OTHERS);
         if (rec) {
             if (rec->symtype == SYM_PROTOVAR) {
-                return offset + (rec->index-1)*4;
+                return offset + (rec->index-1)*8;
             } else if (rec->symtype == SYM_VAR) {
-                return -(rec->index)*4;
+                return -(rec->index)*8;
             }
         }
         return -1;

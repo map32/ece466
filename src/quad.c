@@ -73,6 +73,9 @@ astnode* gen_if(astnode* node) {
         curBlock = bb;
         gen_stmt(node->ternop->right);
     }
+    if (node->ternop->right) {
+        curBlock = aa;
+    }
     emit(q_br,0,0,node->ternop->right ? astIntegral(cc->id) : astIntegral(bb->id));
     curBlock = node->ternop->right ? cc : bb;
 }
@@ -295,20 +298,26 @@ astnode* gen_rval(astnode* node, astnode* target) {
         astnode* l = gen_rval(node->call->func,0);
         astnode_listnode* p = node->call->params->list->head;
         emit(q_stackinit,astIntegral(node->call->params->list->len),0,0);
-        while (p) {
+        int len = node->call->params->list->len;
+        int i=len;
+        while (i>0) {
             astnode_listnode* temp = p;
-            while(temp->next) {
+            int j=1;
+            while(j<i) {
                 temp = temp->next;
+                j++;
             }
             astnode *t = gen_rval(temp->value,0);
             emit(q_storestack,t,0,0);
-            p = p->next;
+            i--;
         }
         emit(q_call,l,0,target);
         return target;
     } else if (node->nodetype == AST_LIST) {
         astnode* l = node->list->head->value;
         return gen_rval(l,0);
+    } else if (node->nodetype == AST_STRING) {
+        return node;
     }
 }
 
@@ -533,6 +542,9 @@ void printast_quad(astnode* a) {
             break;
         case AST_IDENT:
             printf("%s ",a->ident->name);
+            break;
+        case AST_STRING:
+            printf("%s ",a->string);
             break;
         default:
             printf("unknown ast type in quad ");

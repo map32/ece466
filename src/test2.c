@@ -22,5 +22,7 @@ int main(int argc, int argd) {
 		int d;
 		d=32;
 	}
+	a = func(1,2,3);
+	printf("hello world!%d\n",a);
 	return 0;
 }
