@@ -2819,7 +2819,7 @@ else {(yyval.astnode)->t = rec->type->head->next; (yyval.astnode)->tbl = symtab_
   case 145: /* $@3: %empty  */
 #line 370 "parsing.y"
                                 {symtab* tab = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-		(&symtab_file->row[symtab_file->rownum-1])->func = tab;
+		(&symtab_file->row[symtab_file->rownum])->func = tab;
 		prototype = tab; symtab_cur = prototype;}
 #line 2825 "parsing.tab.c"
     break;
@@ -2840,7 +2840,7 @@ else {(yyval.astnode)->t = rec->type->head->next; (yyval.astnode)->tbl = symtab_
 #line 374 "parsing.y"
                                 {
 		symtab* tab = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-		(&symtab_file->row[symtab_file->rownum-1])->func = tab;
+		(&symtab_file->row[symtab_file->rownum])->func = tab;
 		prototype = tab; symtab_cur = prototype;}
 #line 2846 "parsing.tab.c"
     break;
@@ -3084,7 +3084,7 @@ else {(yyval.astnode)->t = rec->type->head->next; (yyval.astnode)->tbl = symtab_
        {
 	if (funcsym == 0){
 		symtab* tab = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-		(&symtab_file->row[symtab_file->rownum-1])->func = tab;
+		(&symtab_file->row[symtab_file->rownum])->func = tab;
  		symtab_cur = tab;
 	}
 	else {

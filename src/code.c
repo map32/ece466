@@ -26,20 +26,20 @@ fib:
 	pushq	%rbx
 	subq	$24, %rsp
 	.cfi_offset 3, -24
-	movl	%edi, -20(%rbp)
+	movq	%edi, -20(%rbp)
 	cmpl	$1, -20(%rbp)
 	jg	.L2
-	movl	$1, %eax
+	movq	$1, %eax
 	jmp	.L3
 .L2:
-	movl	-20(%rbp), %eax
+	movq	-20(%rbp), %eax
 	subl	$1, %eax
-	movl	%eax, %edi
+	movq	%eax, %edi
 	call	fib
-	movl	%eax, %ebx
-	movl	-20(%rbp), %eax
+	movq	%eax, %ebx
+	movq	-20(%rbp), %eax
 	subl	$2, %eax
-	movl	%eax, %edi
+	movq	%eax, %edi
 	call	fib
 	addl	%ebx, %eax
 .L3:
@@ -70,16 +70,16 @@ main:
 	leaq	.LC0(%rip), %rax
 	movq	%rax, %rdi
 	call	puts@PLT
-	movl	$8, %edi
+	movq	$8, %edi
 	call	fib
-	movl	%eax, -4(%rbp)
-	movl	-4(%rbp), %eax
-	movl	%eax, %esi
+	movq	%eax, -4(%rbp)
+	movq	-4(%rbp), %eax
+	movq	%eax, %esi
 	leaq	.LC1(%rip), %rax
 	movq	%rax, %rdi
-	movl	$0, %eax
+	movq	$0, %eax
 	call	printf@PLT
-	movl	$0, %eax
+	movq	$0, %eax
 	leave
 	.cfi_def_cfa 7, 8
 	ret
@@ -106,7 +106,7 @@ void generate(char* filename) {
                 fprintf(f,".globl %s\n",rec.ident);
                 fprintf(f,".bss\n",rec.ident);
                 fprintf(f,".align %d\n",typeSize(rec.type->head->next));
-                fprintf(f,".size %d\n",typeSize(rec.type->head->next));
+                fprintf(f,".size, %d\n",typeSize(rec.type->head->next));
                 fprintf(f,".type %s, @object\n",rec.ident);
                 fprintf(f,"%s:\n",rec.ident);
                 fprintf(f,".zero %d\n",typeSize(rec.type->head->next));
@@ -132,7 +132,7 @@ void generate(char* filename) {
         if (funcc) {
             fprintf(f,"pushq %%rbp\n");
             fprintf(f,"movq %%rsp, %%rbp\n");
-            fprintf(f,"subq %%%d, %%rsp\n",b->sym->func->localtotal * 8);
+            fprintf(f,"subq $%d, %%rsp\n",b->sym->func->localtotal * 8);
             funcc = 0;
         }
         int j=0;
@@ -184,8 +184,8 @@ void generate(char* filename) {
                     deallocate(allocator,q.src1->tempnum);
                     deallocate(allocator,q.src2->tempnum);
                     if (cc == 2) e = getNewRegister(allocator,q.dest->tempnum);
-                    if (cc==1) fprintf(f,"movl %%%s, %d(%%rbp)\n",d,rbpOffset(q.dest->ident));
-                    else if (cc==3) fprintf(f,"movl %%%s, %s(%%rip)\n",d,q.dest->ident->name);
+                    if (cc==1) fprintf(f,"movq %%%s, %d(%%rbp)\n",d,rbpOffset(q.dest->ident));
+                    else if (cc==3) fprintf(f,"movq %%%s, %s(%%rip)\n",d,q.dest->ident->name);
                     else fprintf(f,"movq %%%s, %%%s\n",d,e);
                 break;
                 case q_sub:
@@ -205,8 +205,8 @@ void generate(char* filename) {
                     deallocate(allocator,q.src1->tempnum);
                     deallocate(allocator,q.src2->tempnum);
                     if (cc == 2) e = getNewRegister(allocator,q.dest->tempnum);
-                    if (cc==1) fprintf(f,"movl %%%s, %d(%%rbp)\n",d,rbpOffset(q.dest->ident));
-                    else if (cc==3) fprintf(f,"movl %%%s, %s(%%rip)\n",d,q.dest->ident->name);
+                    if (cc==1) fprintf(f,"movq %%%s, %d(%%rbp)\n",d,rbpOffset(q.dest->ident));
+                    else if (cc==3) fprintf(f,"movq %%%s, %s(%%rip)\n",d,q.dest->ident->name);
                     else fprintf(f,"movq %%%s, %%%s\n",d,e);
                 break;
                 case q_mul:
@@ -234,8 +234,8 @@ void generate(char* filename) {
                     deallocate(allocator,q.src1->tempnum);
                     deallocate(allocator,q.src2->tempnum);
                     if (cc == 2) e = getNewRegister(allocator,q.dest->tempnum);
-                    if (cc==1) fprintf(f,"movl %%%s, %d(%%rbp)\n",c,rbpOffset(q.dest->ident));
-                    else if (cc==3) fprintf(f,"movl %%%s, %s(%%rip)\n",c,q.dest->ident->name);
+                    if (cc==1) fprintf(f,"movq %%%s, %d(%%rbp)\n",c,rbpOffset(q.dest->ident));
+                    else if (cc==3) fprintf(f,"movq %%%s, %s(%%rip)\n",c,q.dest->ident->name);
                     else fprintf(f,"movq %%%s, %%%s\n",c,e);
                 break;
                 case q_div:
@@ -263,37 +263,37 @@ void generate(char* filename) {
                     deallocate(allocator,q.src1->tempnum);
                     deallocate(allocator,q.src2->tempnum);
                     if (cc == 2) e = getNewRegister(allocator,q.dest->tempnum);
-                    if (cc==1) fprintf(f,"movl %%%s, %d(%%rbp)\n",c,rbpOffset(q.dest->ident));
-                    else if (cc==3) fprintf(f,"movl %%%s, %s(%%rip)\n",c,q.dest->ident->name);
+                    if (cc==1) fprintf(f,"movq %%%s, %d(%%rbp)\n",c,rbpOffset(q.dest->ident));
+                    else if (cc==3) fprintf(f,"movq %%%s, %s(%%rip)\n",c,q.dest->ident->name);
                     else fprintf(f,"movq %%%s, %%%s\n",c,e);
                 break;
                 case q_mov:
                     if (aa==0) {
                         if (cc==1) {
-                            fprintf(f,"movl $%d, %d(%%rbp)\n",q.src1->num->i,c_);
+                            fprintf(f,"movq $%d, %d(%%rbp)\n",q.src1->num->i,c_);
                         }else if (cc==3) {
-                            fprintf(f,"movl $%d, %s(%%rip)\n",q.src1->num->i,q.dest->ident->name);
+                            fprintf(f,"movq $%d, %s(%%rip)\n",q.src1->num->i,q.dest->ident->name);
                         } else {
                             fprintf(f,"movq $%d, %%%s\n",q.src1->num->i,getNewRegister(allocator,q.dest->tempnum));
                         }
                     } else if (aa==1){
                         if (cc==1) {
                             fprintf(f,"movq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
+                            fprintf(f,"movq %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
                             deallocate(allocator,-2);
                         } else if (cc==3) {
                             fprintf(f,"movq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
+                            fprintf(f,"movq %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
                             deallocate(allocator,-2);
                         }  else {
                             fprintf(f,"movq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,q.dest->tempnum));
                         }
                     } else if (aa==2){
                         if (cc==1) {
-                            fprintf(f,"movl %%%s, %d(%%rbp)\n",getStoredRegister(allocator,q.src1->tempnum),c_);
+                            fprintf(f,"movq %%%s, %d(%%rbp)\n",getStoredRegister(allocator,q.src1->tempnum),c_);
                             deallocate(allocator,q.src1->tempnum);
                         } else if (cc==3) {
-                            fprintf(f,"movl %%%s, %s(%%rip)\n",getStoredRegister(allocator,q.src1->tempnum),q.dest->ident->name);
+                            fprintf(f,"movq %%%s, %s(%%rip)\n",getStoredRegister(allocator,q.src1->tempnum),q.dest->ident->name);
                             deallocate(allocator,q.src1->tempnum);
                         }  else {
                             fprintf(f,"movq %%%s, %%%s\n",getStoredRegister(allocator,q.src1->tempnum),getNewRegister(allocator,q.dest->tempnum));
@@ -302,11 +302,11 @@ void generate(char* filename) {
                     } else if (aa==3){
                         if (cc==1) {
                             fprintf(f,"movq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
+                            fprintf(f,"movq %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
                             deallocate(allocator,-2);
                         } else if (cc==3) {
                             fprintf(f,"movq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
+                            fprintf(f,"movq %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
                             deallocate(allocator,-2);
                         }  else {
                             fprintf(f,"movq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,q.dest->tempnum));
@@ -317,13 +317,13 @@ void generate(char* filename) {
                     if (aa==1) {
                         if(cc==1) {
                             fprintf(f,"leaq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
+                            fprintf(f,"movq %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
                             deallocate(allocator,-2);
                         } else if (cc==2) {
                             fprintf(f,"leaq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,q.dest->tempnum));
                         } else if (cc==3) {
                             fprintf(f,"leaq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
+                            fprintf(f,"movq %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
                             deallocate(allocator,-2);
                         }
                     } else if (aa==2) {
@@ -334,19 +334,19 @@ void generate(char* filename) {
                             reallocate(allocator,q.src1->tempnum,q.dest->tempnum);
                         } else if (cc==3) {
                             fprintf(f,"leaq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
+                            fprintf(f,"movq %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
                             deallocate(allocator,-2);
                         }
                     } else if (aa==3) {
                         if(cc==1) {
                             fprintf(f,"leaq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
+                            fprintf(f,"movq %%%s, %d(%%rbp)\n",getStoredRegister(allocator,-2),c_);
                             deallocate(allocator,-2);
                         } else if (cc==2) {
                             fprintf(f,"leaq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,q.dest->tempnum));
                         } else if (cc==3) {
                             fprintf(f,"leaq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,-2));
-                            fprintf(f,"movl %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
+                            fprintf(f,"movq %%%s, %s(%%rip)\n",getStoredRegister(allocator,-2),q.dest->ident->name);
                             deallocate(allocator,-2);
                         }
                     }
@@ -354,14 +354,14 @@ void generate(char* filename) {
                 case q_store:
                     if (aa==1) {
                         fprintf(f,"movq %d(%%rbp), %%%s\n",a,getNewRegister(allocator,-2));
-                        fprintf(f,"movl %%%s, (%%%s)\n",getStoredRegister(allocator,-2),getStoredRegister(allocator,q.dest->tempnum));
+                        fprintf(f,"movq %%%s, (%%%s)\n",getStoredRegister(allocator,-2),getStoredRegister(allocator,q.dest->tempnum));
                         deallocate(allocator,-2);
                     } else if (aa==2) {
-                        fprintf(f,"movl %%%s, (%%%s)\n",getStoredRegister(allocator,q.src1->tempnum),getStoredRegister(allocator,q.dest->tempnum));
+                        fprintf(f,"movq %%%s, (%%%s)\n",getStoredRegister(allocator,q.src1->tempnum),getStoredRegister(allocator,q.dest->tempnum));
                         deallocate(allocator,q.src1->tempnum);
                     } else if (aa==3) {
                         fprintf(f,"movq %s(%%rip), %%%s\n",q.src1->ident->name,getNewRegister(allocator,-2));
-                        fprintf(f,"movl %%%s, (%%%s)\n",getStoredRegister(allocator,-2),getStoredRegister(allocator,q.dest->tempnum));
+                        fprintf(f,"movq %%%s, (%%%s)\n",getStoredRegister(allocator,-2),getStoredRegister(allocator,q.dest->tempnum));
                         deallocate(allocator,-2);
                     }
                     break;
@@ -379,25 +379,24 @@ void generate(char* filename) {
                     break;
                 case q_storestack:
                     if (aa == 0){
-                        fprintf(f,"pushl $%d\n",q.src1->num->i);
+                        fprintf(f,"pushq $%d\n",q.src1->num->i);
                     } else if (aa == 1) {
-                        fprintf(f,"pushl %d(%%rbp)\n",a);
+                        fprintf(f,"pushq %d(%%rbp)\n",a);
                     } else if (aa == 2) {
-                        fprintf(f,"pushl %%%s\n",getStoredRegister(allocator,q.src1->tempnum));
+                        fprintf(f,"pushq %%%s\n",getStoredRegister(allocator,q.src1->tempnum));
                         deallocate(allocator,q.src1->tempnum);
                     } else {
-                        fprintf(f,"pushl %s(%%rip)\n",q.src1->ident->name);
+                        fprintf(f,"pushq %s(%%rip)\n",q.src1->ident->name);
                     }
                     break;
                 case q_call:
                 {
                     symrec* rec = findsym(symtab_file,q.src1->ident->name,NAMESPACE_OTHERS);
-                    fprintf(f,"movq %%rax %%r12\n");
-                    fprintf(f,"movq %%r10 %%r13\n");
+                    fprintf(f,"pushq %%rax\n");
+                    fprintf(f,"pushq %%r10\n");
+                    fprintf(f,"pushq %%r11\n");
                     if (rec) fprintf(f,"call %s\n",rec->ident);
                     else fprintf(f,"call %s@PLT\n",q.src1->ident->name);   
-                    allocator[2] = allocator[1];
-                    allocator[1] = allocator[0];
                     if (cc==1) {
                         fprintf(f,"movq %%rax %d(%%rbp)\n",a);
                     } else if (cc==2) {
@@ -405,13 +404,14 @@ void generate(char* filename) {
                     } else if (cc==3) {
                         fprintf(f,"movq %%rax %s(%%rip)\n",q.dest->ident->name);
                     }
-                    fprintf(f,"movq %%r12 %%r10\n");
-                    fprintf(f,"movq %%r13 %%r11\n");
+                    fprintf(f,"popq %%r11\n");
+                    fprintf(f,"popq %%r10\n");
+                    fprintf(f,"popq %%rax\n");
                 }
                 break;
                 case q_rt:
                     if (aa==0) {
-                        fprintf(f,"movl $%d\n",q.src1->num->i);
+                        fprintf(f,"movq $%d, %%rax\n",q.src1->num->i);
                     } else if (aa==2) {
                         fprintf(f,"movq %%%%s %%rax\n",getStoredRegister(allocator,q.src1->tempnum));
                     } else if (aa=1) {

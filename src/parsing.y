@@ -368,12 +368,12 @@ direct_declarator
 	| direct_declarator '[' type_qualifier_list '*' ']'
 	| direct_declarator '[' '*' ']'
 	| direct_declarator '(' {symtab* tab = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-		(&symtab_file->row[symtab_file->rownum-1])->func = tab;
+		(&symtab_file->row[symtab_file->rownum])->func = tab;
 		prototype = tab; symtab_cur = prototype;} parameter_type_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($4)); symtab_cur = symtab_cur->parent;}
 	| direct_declarator '(' identifier_list ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc($3));}
 	| direct_declarator '(' {
 		symtab* tab = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-		(&symtab_file->row[symtab_file->rownum-1])->func = tab;
+		(&symtab_file->row[symtab_file->rownum])->func = tab;
 		prototype = tab; symtab_cur = prototype;} ')' {checkdeclr($1,AST_FUNC,yylineno); insertAstListTail($1->decl->type,astFunc(NULL)); symtab_cur = symtab_cur->parent;}
 	;
 
@@ -486,7 +486,7 @@ compoundstmt
  | '{' {
 	if (funcsym == 0){
 		symtab* tab = createTable(symtab_cur,yylineno,SCOPE_BLOCK);
-		(&symtab_file->row[symtab_file->rownum-1])->func = tab;
+		(&symtab_file->row[symtab_file->rownum])->func = tab;
  		symtab_cur = tab;
 	}
 	else {
