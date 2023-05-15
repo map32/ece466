@@ -30,6 +30,16 @@ void insertRow(symtab* tab, int rownum, astnode* node, char* ident, SYM_TYPE sym
     rec->type = node ? node->list : NULL;
     rec->namespace = ns;
     rec->scope = sc;
+    rec->parent = tab;
+    if (tab->parent) {
+        symtab* h = tab;
+        while(h->parent->parent) {
+            h = h->parent;
+        }
+        if (ns == NAMESPACE_OTHERS && symtype == SYM_VAR)
+        rec->index = h->localtotal;
+
+    }
     if (node) node->tbl = tab;
 }
 
@@ -80,6 +90,7 @@ struct symrec* insertFuncDef(struct symtab* table, struct astnode* data, int lin
         rec->complete = 1;
         rec->type = data->funcdef->type->decl->type->list;
         rec->namespace = NAMESPACE_OTHERS;
+        rec->parent = table;
         data->tbl = table;
         table->rownum += 1;
     return rec;
@@ -87,19 +98,27 @@ struct symrec* insertFuncDef(struct symtab* table, struct astnode* data, int lin
 
 struct symrec* insertDecl(struct symtab* table, struct astnode* data, int lineno){
     symrec* r = findsym_nonrecursive(table,data->decl->ident->ident->name,NAMESPACE_OTHERS);
+    symtab* funct;
     int ind = r ? (r-table->row) : table->rownum;
     data->tbl = table;
     switch(data->decl->type->list->head->value->nodetype){
         case AST_FUNC:
-        insertRow(table,ind,data->decl->type,data->decl->ident->ident->name,SYM_FUNC,0,NAMESPACE_OTHERS,0,lineno,0);
+        insertRow(table,ind,data->decl->type,data->decl->ident->ident->name,SYM_FUNC,SCOPE_FILE,NAMESPACE_OTHERS,0,lineno,0);
         break;
         case AST_FUNCDEF:
-        insertRow(table,ind,data->funcdef->type,data->decl->ident->ident->name,SYM_FUNC,1,NAMESPACE_OTHERS,0,lineno,0);
+        insertRow(table,ind,data->funcdef->type,data->decl->ident->ident->name,SYM_FUNC,SCOPE_BLOCK,NAMESPACE_OTHERS,0,lineno,0);
         struct symtab* t = data->funcdef->stmt->tbl;
         insertDecls(t,data->funcdef->type,lineno);
         break;
         default:
-        insertRow(table,ind,data->decl->type,data->decl->ident->ident->name,SYM_VAR,1,NAMESPACE_OTHERS,1,lineno,0);
+        if (table->parent) {
+            funct = table;
+            while(funct->parent->parent) {
+                funct = funct->parent;
+            }
+            funct->localtotal += 1;
+        }
+        insertRow(table,ind,data->decl->type,data->decl->ident->ident->name,SYM_VAR,SCOPE_BLOCK,NAMESPACE_OTHERS,1,lineno,0);
         break;
     }
     if (!r) table->rownum += 1;
@@ -109,6 +128,8 @@ struct symrec* insertDecl(struct symtab* table, struct astnode* data, int lineno
 void setPrototype(struct symtab* table){
     int a = table->rownum;
     int i=0;
+    table->protototal = table->localtotal;
+        table->localtotal = 0;
     for(;i<a;i++){
         symrec* rec = &table->row[i];
         rec->symtype = SYM_PROTOVAR;

@@ -8,69 +8,75 @@
 globe:
 	.zero	4
 	.text
-	.globl	main
-	.type	main, @function
-main:
+	.globl	func
+	.type	func, @function
+func:
 .LFB0:
 	.cfi_startproc
-	pushq	%rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset 6, -16
-	movq	%rsp, %rbp
-	.cfi_def_cfa_register 6
-	subq	$48, %rsp
-	movl	%edi, -36(%rbp)
-	movq	%fs:40, %rax
-	movq	%rax, -8(%rbp)
-	xorl	%eax, %eax
-	movl	$300, globe(%rip)
-	movl	$100, external(%rip)
-	movl	$4, -36(%rbp)
-	movl	globe(%rip), %eax
-	addl	$5, %eax
-	movl	%eax, -20(%rbp)
-	movl	-20(%rbp), %eax
-	cltq
-	movq	%rax, -16(%rbp)
-	leaq	-20(%rbp), %rax
-	movl	%eax, %edx
-	movq	-16(%rbp), %rax
-	movl	%edx, (%rax)
-	leaq	globe(%rip), %rax
-	movq	%rax, -16(%rbp)
-	movq	-16(%rbp), %rax
-	movl	%eax, globe(%rip)
-	movq	-16(%rbp), %rax
-	movl	(%rax), %eax
-	cltq
-	movq	%rax, -16(%rbp)
-	movl	-20(%rbp), %edx
-	movl	%edx, %eax
-	addl	%eax, %eax
-	addl	%edx, %eax
-	movl	%eax, -20(%rbp)
-	movl	$0, -20(%rbp)
-	movl	$3, -20(%rbp)
-	movl	-20(%rbp), %eax
-	andl	$5, %eax
-	movl	%eax, -20(%rbp)
-	movl	-20(%rbp), %eax
-	xorl	$5, %eax
-	movl	%eax, -20(%rbp)
-	movl	-20(%rbp), %eax
-	orl	$5, %eax
-	movl	%eax, -20(%rbp)
-	movl	$0, %eax
-	movq	-8(%rbp), %rdx
-	subq	%fs:40, %rdx
-	je	.L3
-	call	__stack_chk_fail@PLT
+	pushl	%ebp
+	.cfi_def_cfa_offset 8
+	.cfi_offset 5, -8
+	movl	%esp, %ebp
+	.cfi_def_cfa_register 5
+	call	__x86.get_pc_thunk.ax
+	addl	$_GLOBAL_OFFSET_TABLE_, %eax
+	movl	$32, 12(%ebp)
+	movl	$64, 16(%ebp)
+	cmpl	$3, 8(%ebp)
+	jle	.L2
+	movl	$32, 8(%ebp)
+	jmp	.L3
+.L2:
+	addl	$1, 8(%ebp)
 .L3:
-	leave
-	.cfi_def_cfa 7, 8
+	movl	8(%ebp), %eax
+	popl	%ebp
+	.cfi_restore 5
+	.cfi_def_cfa 4, 4
 	ret
 	.cfi_endproc
 .LFE0:
+	.size	func, .-func
+	.globl	main
+	.type	main, @function
+main:
+.LFB1:
+	.cfi_startproc
+	pushl	%ebp
+	.cfi_def_cfa_offset 8
+	.cfi_offset 5, -8
+	movl	%esp, %ebp
+	.cfi_def_cfa_register 5
+	subl	$16, %esp
+	call	__x86.get_pc_thunk.ax
+	addl	$_GLOBAL_OFFSET_TABLE_, %eax
+	movl	$10, -16(%ebp)
+	cmpl	$0, -12(%ebp)
+	jle	.L6
+	movl	$100, -12(%ebp)
+	jmp	.L7
+.L6:
+	movl	$10, -8(%ebp)
+	movl	$32, -4(%ebp)
+.L7:
+	movl	$0, %eax
+	leave
+	.cfi_restore 5
+	.cfi_def_cfa 4, 4
+	ret
+	.cfi_endproc
+.LFE1:
 	.size	main, .-main
+	.section	.text.__x86.get_pc_thunk.ax,"axG",@progbits,__x86.get_pc_thunk.ax,comdat
+	.globl	__x86.get_pc_thunk.ax
+	.hidden	__x86.get_pc_thunk.ax
+	.type	__x86.get_pc_thunk.ax, @function
+__x86.get_pc_thunk.ax:
+.LFB2:
+	.cfi_startproc
+	movl	(%esp), %eax
+	ret
+	.cfi_endproc
+.LFE2:
 	.ident	"GCC: (Alpine 12.2.1_git20220924-r10) 12.2.1 20220924"
 	.section	.note.GNU-stack,"",@progbits

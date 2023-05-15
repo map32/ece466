@@ -132,7 +132,7 @@ void generate(char* filename) {
         if (funcc) {
             fprintf(f,"pushq %%rbp\n");
             fprintf(f,"movq %%rsp, %%rbp\n");
-            fprintf(f,"subq %%16, %%rsp\n");
+            fprintf(f,"subq %%%d, %%rsp\n",b->sym->func->localtotal * 4);
             funcc = 0;
         }
         int j=0;
@@ -440,7 +440,7 @@ void generate(char* filename) {
                     deallocate(allocator,q.src2->tempnum);
                     break;
                 case q_br:
-                    fprintf(f,"jmp .BB%d\n",q.src1->num->i);
+                    fprintf(f,"jmp .BB%d\n",q.dest->num->i);
                     break;
                 case q_gt:
                     fprintf(f,"jg .BB%d\n",q.src1->num->i);
@@ -506,17 +506,13 @@ int rbpOffset(astnode* ident) {
     } else {
         int i=0;
         int offset = 8;
-        while(tbl->scope == SCOPE_BLOCK){
-            for(i;i<tbl->rownum;i++){
-                symrec rec = tbl->row[i];
-                if (rec.symtype == SYM_PROTOVAR) {
-                    offset += typeSize(rec.type->head->next);
-                } else if (rec.symtype == SYM_VAR && offset == 8) {
-                    offset = -typeSize(rec.type->head->next);
-                } else offset -= typeSize(rec.type->head->next);
-                if (strcmp(rec.ident, ident->ident->name) == 0) return offset;
+        symrec* rec = findsym(tbl,ident->ident->name,NAMESPACE_OTHERS);
+        if (rec) {
+            if (rec->symtype == SYM_PROTOVAR) {
+                return offset + (rec->index-1)*4;
+            } else if (rec->symtype == SYM_VAR) {
+                return -(rec->index)*4;
             }
-            tbl = tbl->parent;
         }
         return -1;
     }

@@ -24,6 +24,17 @@ typedef enum SCOPE_TYPE {
     SCOPE_PROTO,
     SCOPE_OBJ
 } SCOPE_TYPE;
+typedef struct symtab {
+    struct symtab* parent;
+    struct symrec* row;
+    int rowmax;
+    int rownum;
+    int lineno;
+    int localtotal; //all local variables under function block
+    int protototal; //all parameters under func block
+    SCOPE_TYPE scope;
+    struct symtab* root;
+} symtab;
 typedef struct symrec {
     int key;
     char* ident;
@@ -34,17 +45,10 @@ typedef struct symrec {
     int lineno;
     NAMESPACE_TYPE namespace;
     int bits;
+    symtab* parent;
+    symtab* func;
+    int index;
 } symrec;
-
-typedef struct symtab {
-    struct symtab* parent;
-    struct symrec* row;
-    int rowmax;
-    int rownum;
-    int lineno;
-    SCOPE_TYPE scope;
-    struct symtab* root;
-} symtab;
 struct symtab* createTable(struct symtab* parent,int lineno,SCOPE_TYPE scope);
 struct symrec* insertDecls(struct symtab* table, struct astnode* data, int lineno);
 symrec *findsym(symtab*, char*, NAMESPACE_TYPE);
