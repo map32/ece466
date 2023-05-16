@@ -18,10 +18,10 @@ fib:
 .BB1:
 pushq %rbp
 movq %rsp, %rbp
-subq $0, %rsp
-movq 8(%rbp), %rax
+subq $8, %rsp
+movq 16(%rbp), %rax
 movq $2, %r10
-cmp %rax, %r10
+cmp %r10, %rax
 jl .BB2
 jge .BB3
 .BB2:
@@ -30,33 +30,37 @@ leave
 ret
 jmp .BB4
 .BB3:
-movq 8(%rbp), %rax
+subq $16,%rsp
+movq 16(%rbp), %rax
 movq $1, %r10
-subq %rax, %r10
-movq %r10, %rax
-pushq %rax
-pushq %rax
-pushq %r10
-pushq %r11
-call fib
-popq %r11
-popq %r10
-popq %rax
-movq 8(%rbp), %r10
-movq $2, %r11
-subq %r10, %r11
-movq %r11, %rax
-pushq %rax
-pushq %rax
-pushq %r10
-pushq %r11
-call fib
-popq %r11
-popq %r10
-popq %rax
-addq %error, %rax
+subq %r10, %rax
 movq %rax, %rax
-movq %%s %rax
+pushq %rax
+addq $24,%rsp
+pushq %rax
+pushq %r10
+subq $8,%rsp
+call fib
+popq %r11
+popq %r10
+movq %rax, -8(%rbp)
+subq $16,%rsp
+movq 16(%rbp), %rax
+movq $2, %r10
+subq %r10, %rax
+movq %rax, %rax
+pushq %rax
+addq $24,%rsp
+pushq %rax
+pushq %r10
+subq $8,%rsp
+call fib
+popq %r11
+popq %r10
+movq -8(%rbp), %r10
+addq %r10, %rax
+movq %rax, %rax
+movq %rax, %rax
 leave
 ret
 .BB4:
@@ -65,14 +69,15 @@ main:
 pushq %rbp
 movq %rsp, %rbp
 subq $8, %rsp
-pushq $8
+subq $16,%rsp
+pushq $6
+addq $24,%rsp
 pushq %rax
 pushq %r10
-pushq %r11
+subq $8,%rsp
 call fib
 popq %r11
 popq %r10
-popq %rax
 movq %rax, -8(%rbp)
 movq -8(%rbp), %rax
 leave
